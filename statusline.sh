@@ -1,24 +1,55 @@
 #!/usr/bin/env bash
 input=$(cat)
 
-model=$(echo "$input" | jq -r '.model.display_name')
+# Require jq at runtime for JSON parsing
+if ! command -v jq &>/dev/null; then
+  printf "statusline: jq not found"
+  exit 0
+fi
+
+# Load icon config (written by install.sh)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ICONS="emoji"
+if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
+  source "$SCRIPT_DIR/.statusline.conf"
+fi
+
+# Icon definitions
+if [ "$ICONS" = "nerd" ]; then
+  ICON_FIRE=$'\xef\x81\xad'
+  ICON_LEAF=$'\xef\x81\xac'
+  ICON_BOLT=$'\xef\x83\xa7'
+  ICON_BRAIN=$'\xef\x86\x9d'
+  ICON_GIT=$'\xef\x84\x93'
+  ICON_BRANCH=$'\xee\x82\xa0'
+else
+  ICON_FIRE="🔥"
+  ICON_LEAF="🍃"
+  ICON_BOLT="⚡️"
+  ICON_BRAIN="🧠"
+  ICON_GIT="📂"
+  ICON_BRANCH="🌿"
+fi
+
+model=$(echo "$input" | jq -r '.model.display_name // "unknown"')
 
 # --- context progress bar ---
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-if [ -n "$used_pct" ]; then
-  filled=$(printf "%.0f" "$(echo "$used_pct / 10" | bc -l)")
+used_pct_raw=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+if [ -n "$used_pct_raw" ]; then
+  pct_int=${used_pct_raw%%.*}
+  [ -z "$pct_int" ] && pct_int=0
+  filled=$(( pct_int / 10 ))
   [ "$filled" -gt 10 ] && filled=10
   empty=$(( 10 - filled ))
   bar=""
-  for i in $(seq 1 "$filled"); do bar="${bar}█"; done
-  for i in $(seq 1 "$empty");  do bar="${bar}░"; done
-  pct_int=$(printf "%.0f" "$used_pct")
+  for (( i=0; i<filled; i++ )); do bar="${bar}█"; done
+  for (( i=0; i<empty; i++ ));  do bar="${bar}░"; done
   if [ "$pct_int" -lt 50 ]; then
-    color="\033[32m"   # green
+    color="\033[32m"
   elif [ "$pct_int" -le 70 ]; then
-    color="\033[33m"   # yellow
+    color="\033[33m"
   else
-    color="\033[31m"   # red
+    color="\033[31m"
   fi
   reset="\033[0m"
   ctx=$(printf "ctx: ${color}[%s] %d%%${reset}" "$bar" "$pct_int")
@@ -27,78 +58,60 @@ else
 fi
 
 # --- rate limit color helper ---
-# Usage: rate_color <pct_int>  — echoes the ANSI escape for that usage level
 rate_color() {
   local pct=$1
   if [ "$pct" -lt 50 ]; then
-    printf "\033[32m"   # green  — comfortable
+    printf "\033[32m"
   elif [ "$pct" -lt 70 ]; then
-    printf "\033[34m"   # blue   — moderate
+    printf "\033[34m"
   elif [ "$pct" -lt 90 ]; then
-    printf "\033[33m"   # yellow — getting close
+    printf "\033[33m"
   else
-    printf "\033[31m"   # red    — near limit
+    printf "\033[31m"
   fi
 }
 
-# --- velocity indicator helper ---
-# Usage: velocity_indicator <used_pct> <resets_at> <window_duration_secs>
-# Echoes a pre-colored glyph string (color + nf-fa icon + reset), or "" (unknown).
-# Glyphs (Nerd Font fa-icons, $'...' ANSI-C quoting for reliable UTF-8):
-#   Burning fast → nf-fa-fire    U+F06D  $'\xef\x81\xad'  bright orange \033[38;5;208m
-#   On track     → nf-fa-bolt    U+F0E7  $'\xef\x83\xa7'  cyan          \033[36m
-#   Relaxed      → nf-fa-leaf    U+F06C  $'\xef\x81\xac'  bright green  \033[92m
+# --- velocity indicator ---
 velocity_indicator() {
   local used_pct=$1
   local resets_at=$2
   local window_dur=$3
 
-  # Guard: missing inputs
   [ -z "$used_pct" ] || [ -z "$resets_at" ] || [ -z "$window_dur" ] && return
 
   local now
   now=$(date +%s)
   local remaining_secs=$(( resets_at - now ))
 
-  # Guard: window already expired or hasn't meaningfully started
   [ "$remaining_secs" -le 0 ] && return
   [ "$remaining_secs" -ge "$window_dur" ] && return
 
   local elapsed_secs=$(( window_dur - remaining_secs ))
-
-  # Guard: elapsed is too small (< 1% of window) to avoid divide-by-near-zero noise
   local min_elapsed=$(( window_dur / 100 ))
   [ "$elapsed_secs" -lt "$min_elapsed" ] && return
 
-  # elapsed_fraction * 100, scaled by 100 for integer arithmetic (avoids bc/awk)
   # expected_pct_x100 = (elapsed_secs * 10000) / window_dur
   local expected_pct_x100=$(( elapsed_secs * 10000 / window_dur ))
 
-  # used_pct_x100 = used_pct * 100  (used_pct is already integer)
-  local used_pct_int
-  used_pct_int=$(printf "%.0f" "$used_pct")
+  local used_pct_int=${used_pct%%.*}
+  [ -z "$used_pct_int" ] && used_pct_int=0
   local used_pct_x100=$(( used_pct_int * 100 ))
 
-  # Each branch: symbol_color + glyph + reset — caller re-applies segment color after
-  # Fast: used > expected * 1.25  →  used_x100 * 100 > expected_x100 * 125
+  # Fast: used > expected * 1.25
   if [ $(( used_pct_x100 * 100 )) -gt $(( expected_pct_x100 * 125 )) ]; then
-    local glyph=$'\xef\x81\xad'   # nf-fa-fire U+F06D
-    printf " \033[38;5;208m%s\033[0m" "$glyph"
-  # Relaxed: used < expected * 0.75  →  used_x100 * 100 < expected_x100 * 75
+    printf " %s" "$ICON_FIRE"
+  # Relaxed: used < expected * 0.75
   elif [ $(( used_pct_x100 * 100 )) -lt $(( expected_pct_x100 * 75 )) ]; then
-    local glyph=$'\xef\x81\xac'   # nf-fa-leaf U+F06C
-    printf " \033[92m%s\033[0m" "$glyph"
+    printf " %s" "$ICON_LEAF"
   else
-    local glyph=$'\xef\x83\xa7'   # nf-fa-bolt U+F0E7
-    printf " \033[36m%s\033[0m" "$glyph"
+    printf " %s" "$ICON_BOLT"
   fi
 }
 
 # --- effort / thinking level ---
-# Usage: effort_display <level>  — echoes pre-colored "<brain-icon> <label>" or nothing
 effort_display() {
   local level=$1
-  local brain=$'\xef\x86\x9d'   # nf-fa-graduation-cap U+F19D
+  local brain="$ICON_BRAIN"
   local color label
   case "$level" in
     low)    color="\033[38;5;244m"; label="low"    ;;
@@ -108,11 +121,13 @@ effort_display() {
     max)    color="\033[38;5;208m"; label="max"    ;;
     *)      return ;;
   esac
-  printf "${color}%s  %s\033[0m" "$brain" "$label"
+  printf "%s  ${color}%s\033[0m" "$brain" "$label"
 }
 
 effort_level=$(echo "$input" | jq -r '.effort.level // empty')
-[ -z "$effort_level" ] && effort_level=$(jq -r '.effortLevel // empty' ~/.claude/settings.json 2>/dev/null)
+if [ -z "$effort_level" ]; then
+  effort_level=$(jq -r '.effortLevel // empty' ~/.claude/settings.json 2>/dev/null)
+fi
 effort_seg=""
 if [ -n "$effort_level" ]; then
   effort_seg=$(effort_display "$effort_level")
@@ -132,10 +147,11 @@ if [ -n "$five_pct" ] && [ -n "$five_resets" ]; then
     mins=$(( (remaining_secs % 3600) / 60 ))
     countdown=$(printf "%dh%02dm" "$hrs" "$mins")
   fi
-  five_pct_int=$(printf "%.0f" "$five_pct")
+  five_pct_int=${five_pct%%.*}
+  [ -z "$five_pct_int" ] && five_pct_int=0
   five_color=$(rate_color "$five_pct_int")
   five_vel=$(velocity_indicator "$five_pct" "$five_resets" 18000)
-  limit=$(printf "${five_color}5h:%.0f%%%s${five_color} [%s]\033[0m" "$five_pct" "$five_vel" "$countdown")
+  limit=$(printf "${five_color}5h:%d%%%s${five_color} [%s]\033[0m" "$five_pct_int" "$five_vel" "$countdown")
 else
   limit=""
 fi
@@ -158,25 +174,26 @@ if [ -n "$seven_pct" ] && [ -n "$seven_resets" ]; then
       week_countdown=$(printf "%dh%02dm" "$hrs" "$mins")
     fi
   fi
-  seven_pct_int=$(printf "%.0f" "$seven_pct")
+  seven_pct_int=${seven_pct%%.*}
+  [ -z "$seven_pct_int" ] && seven_pct_int=0
   seven_color=$(rate_color "$seven_pct_int")
   seven_vel=$(velocity_indicator "$seven_pct" "$seven_resets" 604800)
-  week_limit=$(printf "${seven_color}7d:%.0f%%%s${seven_color} [%s]\033[0m" "$seven_pct" "$seven_vel" "$week_countdown")
+  week_limit=$(printf "${seven_color}7d:%d%%%s${seven_color} [%s]\033[0m" "$seven_pct_int" "$seven_vel" "$week_countdown")
 else
   week_limit=""
 fi
 
 # --- git repo + branch ---
 cwd=$(echo "$input" | jq -r '.cwd // empty')
+git_info=""
 if [ -n "$cwd" ]; then
-  git_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)
+  git_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
   if [ -n "$git_root" ]; then
     repo=$(basename "$git_root")
-    branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null)
-    [ -z "$branch" ] && branch=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
-    repo_icon=$'\xef\x84\x93'   # nf-fa-git U+F113
-    branch_icon=$'\xee\x82\xa0' # nf-powerline-branch U+E0A0
-    git_info=$(printf "\033[38;5;244m%s\033[0m %s  \033[38;5;244m%s\033[0m %s" \
+    branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null || echo "?")
+    repo_icon="$ICON_GIT"
+    branch_icon="$ICON_BRANCH"
+    git_info=$(printf "%s %s  %s %s" \
       "$repo_icon" "$repo" "$branch_icon" "$branch")
   fi
 fi
