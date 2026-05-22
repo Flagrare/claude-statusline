@@ -6,7 +6,10 @@ current=$(sed -n 's/^ICONS=//p' "$CONF" 2>/dev/null)
 [ -z "$current" ] && current="emoji"
 
 if [ -n "$1" ]; then
-  target="$1"
+  case "$1" in
+    emoji|nerd) target="$1" ;;
+    *) echo "Unknown mode: $1 (valid: emoji, nerd)"; exit 1 ;;
+  esac
 else
   [ "$current" = "emoji" ] && target="nerd" || target="emoji"
 fi

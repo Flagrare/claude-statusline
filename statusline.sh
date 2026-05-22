@@ -31,10 +31,19 @@ else
   ICON_BRANCH="🌿"
 fi
 
-model=$(echo "$input" | jq -r '.model.display_name // "unknown"')
+# Parse all values upfront in a single jq call to avoid repeated parsing
+eval "$(echo "$input" | jq -r '
+  @sh "model=\(.model.display_name // "unknown")",
+  @sh "used_pct_raw=\(.context_window.used_percentage // "")",
+  @sh "effort_level=\(.effort.level // "")",
+  @sh "five_pct=\(.rate_limits.five_hour.used_percentage // "")",
+  @sh "five_resets=\(.rate_limits.five_hour.resets_at // "")",
+  @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
+  @sh "seven_resets=\(.rate_limits.seven_day.resets_at // "")",
+  @sh "cwd=\(.cwd // "")"
+' 2>/dev/null)" 2>/dev/null || true
 
 # --- context progress bar ---
-used_pct_raw=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 if [ -n "$used_pct_raw" ]; then
   pct_int=${used_pct_raw%%.*}
   [ -z "$pct_int" ] && pct_int=0
@@ -124,7 +133,6 @@ effort_display() {
   printf "%s  ${color}%s\033[0m" "$brain" "$label"
 }
 
-effort_level=$(echo "$input" | jq -r '.effort.level // empty')
 if [ -z "$effort_level" ]; then
   effort_level=$(jq -r '.effortLevel // empty' ~/.claude/settings.json 2>/dev/null)
 fi
@@ -134,8 +142,6 @@ if [ -n "$effort_level" ]; then
 fi
 
 # --- rate limits ---
-five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
-five_resets=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
 
 if [ -n "$five_pct" ] && [ -n "$five_resets" ]; then
   now=$(date +%s)
@@ -156,8 +162,6 @@ else
   limit=""
 fi
 
-seven_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
-seven_resets=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
 
 if [ -n "$seven_pct" ] && [ -n "$seven_resets" ]; then
   now=$(date +%s)
@@ -184,7 +188,6 @@ else
 fi
 
 # --- git repo + branch ---
-cwd=$(echo "$input" | jq -r '.cwd // empty')
 git_info=""
 if [ -n "$cwd" ]; then
   git_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
