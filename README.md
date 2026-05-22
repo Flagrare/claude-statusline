@@ -8,6 +8,8 @@ claude-sonnet-4-6  │  🎓  high  │  myrepo  main  │  5h:42% 🔥 [1h20m] 
 
 *(Colors render in terminal — green → yellow → red as limits approach.)*
 
+<img width="1270" height="159" alt="Screenshot 2026-05-22 095608" src="https://github.com/user-attachments/assets/43709554-db4f-4d25-92c4-fab5fb6923d7" />
+
 ## What it shows
 
 | Segment | What it tells you |
