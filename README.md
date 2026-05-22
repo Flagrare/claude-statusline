@@ -31,7 +31,7 @@ claude-sonnet-4-6  │  🎓  high  │  myrepo  main  │  5h:42% 🔥 [1h20m] 
 ## Install
 
 ```bash
-git clone https://github.com/flagrare/claude-statusline
+git clone https://github.com/Flagrare/claude-statusline
 cd claude-statusline
 bash install.sh
 ```
