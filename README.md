@@ -22,8 +22,9 @@ Emoji mode:
 |---------|-------------|
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
-| Git repo + branch | Repo name and current branch. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit |
+| Git repo + branch | Repo name and current branch. `~` (yellow) unstaged changes, `+` (green) staged, `?` (gray) untracked files — these stack, so `~+` means you have both. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
+| Session cost | Estimated spend for the current session, calculated from the session JSONL file using Anthropic's published pricing. **Opt-in** — off by default. Set `SHOW_COST=true` in `.statusline.conf` (API plan users only; Pro/Max/Teams users don't need this) |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
 
 ## Install
