@@ -5,7 +5,7 @@ You're mid-session, deep in a refactor, and Claude stops responding. Was that th
 This replaces it with everything you actually need to see at a glance:
 
 ```
-claude-sonnet-4-6  │  🧠  high  │  📂 myrepo  🌿 main  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
+claude-sonnet-4-6  │  🧠  high  │  📂 myrepo  🌿 main ↑2  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
 ```
 
 Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn.
@@ -22,7 +22,7 @@ Emoji mode:
 |---------|-------------|
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
-| Git repo + branch | Where you are, so you don't have to check |
+| Git repo + branch | Repo name and current branch. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
 

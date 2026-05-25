@@ -22,6 +22,8 @@ if [ "$ICONS" = "nerd" ]; then
   ICON_BRAIN=$'\xef\x86\x9d'
   ICON_GIT=$'\xef\x84\x93'
   ICON_BRANCH=$'\xee\x82\xa0'
+  ICON_AHEAD=$'\xee\x82\xa1'   # nf-oct-arrow_up
+  ICON_BEHIND=$'\xee\x82\xa2'  # nf-oct-arrow_down
 else
   ICON_FIRE="🔥"
   ICON_LEAF="🍃"
@@ -29,6 +31,8 @@ else
   ICON_BRAIN="🧠"
   ICON_GIT="📂"
   ICON_BRANCH="🌿"
+  ICON_AHEAD="↑"
+  ICON_BEHIND="↓"
 fi
 
 # Parse all values upfront in a single jq call to avoid repeated parsing
@@ -196,8 +200,18 @@ if [ -n "$cwd" ]; then
     branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null || echo "?")
     repo_icon="$ICON_GIT"
     branch_icon="$ICON_BRANCH"
-    git_info=$(printf "%s %s  %s %s" \
-      "$repo_icon" "$repo" "$branch_icon" "$branch")
+
+    # Check ahead/behind relative to upstream tracking branch (no network call)
+    sync_seg=""
+    if git -C "$cwd" rev-parse --abbrev-ref '@{u}' &>/dev/null; then
+      ahead=$(git -C "$cwd" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
+      behind=$(git -C "$cwd" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0)
+      [ "$ahead" -gt 0 ]  && sync_seg="${sync_seg} \033[32m${ICON_AHEAD}${ahead}\033[0m"
+      [ "$behind" -gt 0 ] && sync_seg="${sync_seg} \033[33m${ICON_BEHIND}${behind}\033[0m"
+    fi
+
+    git_info=$(printf "%s %s  %s %s%s" \
+      "$repo_icon" "$repo" "$branch_icon" "$branch" "$sync_seg")
   fi
 fi
 
