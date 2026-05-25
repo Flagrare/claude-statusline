@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.1 — 2026-05-25
+
+### New Features
+
+- **`/statusline-cost`**: new slash command to toggle session cost display without editing `.statusline.conf` by hand. Accepts `on`, `off`, or no argument to toggle. Mirrors the existing `/statusline-icons` command.
+
+---
+
 ## v1.2.0 — 2026-05-25
 
 Better git state visibility, correct Nerd Font icons, and a color rendering fix that was silently breaking everything.
