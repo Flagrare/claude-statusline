@@ -2,7 +2,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF="$SCRIPT_DIR/.statusline.conf"
 
-current=$(sed -n 's/^ICONS=//p' "$CONF" 2>/dev/null)
+current=$(grep '^ICONS=' "$CONF" 2>/dev/null | cut -d= -f2)
 [ -z "$current" ] && current="emoji"
 
 if [ -n "$1" ]; then
@@ -14,5 +14,10 @@ else
   [ "$current" = "emoji" ] && target="nerd" || target="emoji"
 fi
 
-echo "ICONS=$target" > "$CONF"
+if grep -q '^ICONS=' "$CONF" 2>/dev/null; then
+  sed -i '' "s/^ICONS=.*/ICONS=${target}/" "$CONF"
+else
+  echo "ICONS=${target}" >> "$CONF"
+fi
+
 echo "Switched: $current → $target"

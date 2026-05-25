@@ -168,9 +168,23 @@ CONFIG_FILE="$SCRIPT_DIR/.statusline.conf"
   echo "SHOW_COST=$show_cost"
 } > "$CONFIG_FILE"
 
+# Symlink slash commands so git pull automatically surfaces new ones
+COMMANDS_SRC="$SCRIPT_DIR/.claude/commands"
+COMMANDS_DST="$CLAUDE_DIR/commands"
+mkdir -p "$COMMANDS_DST"
+if [ -d "$COMMANDS_SRC" ]; then
+  for cmd_file in "$COMMANDS_SRC"/statusline-*.md; do
+    [ -f "$cmd_file" ] || continue
+    base="$(basename "$cmd_file")"
+    rm -f "$COMMANDS_DST/$base"
+    ln -s "$cmd_file" "$COMMANDS_DST/$base"
+  done
+fi
+
 echo "Installed claude-statusline."
 echo "  Script: $STATUSLINE_SCRIPT"
 echo "  Config: $SETTINGS"
 echo "  Icons:  $icon_mode"
+echo "  Commands: symlinked (auto-update on git pull)"
 echo ""
 echo "Restart Claude Code to see the status bar."

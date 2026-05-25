@@ -1,7 +1,7 @@
-Toggle session cost display in the statusline. Pass "on"/"true" to enable or "off"/"false" to disable. Toggles if no argument given. Intended for API plan users — Pro/Max/Teams subscription users should leave this off.
+Toggle session cost display in the statusline. Pass "on"/"true" to enable or "off"/"false" to disable. Toggles if no argument given. Intended for API plan users.
 
-Run this command via Bash, replacing INSTALL_DIR with the directory containing statusline.sh (read from ~/.claude/settings.json statusLine.command path):
+Run this command via Bash:
 
-INSTALL_DIR/switch-cost.sh $ARGUMENTS
+"$(dirname "$(jq -r '.statusLine.command' ~/.claude/settings.json)")"/switch-cost.sh $ARGUMENTS
 
 Report the output to the user.
