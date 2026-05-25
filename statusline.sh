@@ -36,7 +36,9 @@ if [ "$ICONS" = "nerd" ]; then
   ICON_BRANCH=$'\xee\x82\xa0'
   ICON_AHEAD="↑"
   ICON_BEHIND="↓"
-  ICON_DIRTY=$'\xef\x81\x80'   # nf-fa-pencil (U+F040)
+  ICON_AHEAD=$'\xf3\xb0\x9c\xb7'   # nf-md-arrow_up_bold   (U+F0737)
+  ICON_BEHIND=$'\xf3\xb0\x9c\xae'  # nf-md-arrow_down_bold (U+F072E)
+  ICON_DIRTY=$'\xef\x81\x80'       # nf-fa-pencil          (U+F040)
 else
   ICON_FIRE="🔥"
   ICON_LEAF="🍃"
@@ -229,8 +231,8 @@ if [ -n "$cwd" ]; then
     if [ -n "$upstream" ]; then
       ahead=$(git -C "$cwd" rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
       behind=$(git -C "$cwd" rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
-      [ "$ahead" -gt 0 ]  && sync_seg="${sync_seg} ${CLR_GREEN}${ICON_AHEAD} ${ahead}${CLR_RESET}"
-      [ "$behind" -gt 0 ] && sync_seg="${sync_seg} ${CLR_YELLOW}${ICON_BEHIND} ${behind}${CLR_RESET}"
+      [ "$ahead" -gt 0 ]  && sync_seg="${sync_seg} ${CLR_GREEN}${ahead}${ICON_AHEAD}${CLR_RESET}"
+      [ "$behind" -gt 0 ] && sync_seg="${sync_seg} ${CLR_YELLOW}${behind}${ICON_BEHIND}${CLR_RESET}"
     fi
 
     git_info="${ICON_GIT} ${repo}  ${ICON_BRANCH} ${branch}${dirty_seg}${sync_seg}"
