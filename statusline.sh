@@ -34,11 +34,8 @@ if [ "$ICONS" = "nerd" ]; then
   ICON_BRAIN=$'\xef\x86\x9d'
   ICON_GIT=$'\xef\x84\x93'
   ICON_BRANCH=$'\xee\x82\xa0'
-  ICON_AHEAD="↑"
-  ICON_BEHIND="↓"
   ICON_AHEAD=$'\xf3\xb0\x9c\xb7'   # nf-md-arrow_up_bold   (U+F0737)
   ICON_BEHIND=$'\xf3\xb0\x9c\xae'  # nf-md-arrow_down_bold (U+F072E)
-  ICON_DIRTY=$'\xef\x81\x80'       # nf-fa-pencil          (U+F040)
 else
   ICON_FIRE="🔥"
   ICON_LEAF="🍃"
@@ -48,7 +45,6 @@ else
   ICON_BRANCH="🌿"
   ICON_AHEAD="↑"
   ICON_BEHIND="↓"
-  ICON_DIRTY="*"
 fi
 
 # Parse all values upfront in a single jq call to avoid repeated parsing
@@ -214,11 +210,13 @@ if [ -n "$cwd" ]; then
     repo=$(basename "$git_root")
     branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null || echo "?")
 
-    # Dirty working tree: staged or unstaged changes
+    # Git state indicators: ~ unstaged  + staged  ? untracked
     dirty_seg=""
-    if ! git -C "$cwd" diff --quiet 2>/dev/null || ! git -C "$cwd" diff --cached --quiet 2>/dev/null; then
-      dirty_seg=" ${CLR_YELLOW}${ICON_DIRTY}${CLR_RESET}"
-    fi
+    git -C "$cwd" diff --quiet 2>/dev/null          || dirty_seg="${dirty_seg}${CLR_YELLOW}~${CLR_RESET}"
+    git -C "$cwd" diff --cached --quiet 2>/dev/null || dirty_seg="${dirty_seg}${CLR_GREEN}+${CLR_RESET}"
+    git -C "$cwd" ls-files --others --exclude-standard 2>/dev/null \
+      | head -1 | grep -q . && dirty_seg="${dirty_seg}${CLR_GRAY}?${CLR_RESET}"
+    [ -n "$dirty_seg" ] && dirty_seg=" ${dirty_seg}"
 
     # Sync indicators: prefer explicit tracking branch, fall back to origin/<branch>
     sync_seg=""
