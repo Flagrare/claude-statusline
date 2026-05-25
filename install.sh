@@ -153,9 +153,20 @@ elif command -v jq &>/dev/null; then
   mv "$tmp" "$SETTINGS"
 fi
 
+# Cost display (API plans only — Pro/Max/Teams subscription users should leave this off)
+show_cost="false"
+printf "  Show session cost estimate? (API plan users only — leave off for Pro/Max/Teams) [y/N] "
+read -r answer
+case "$answer" in
+  [yY]*) show_cost="true" ;;
+esac
+
 # Write config for the statusline script
 CONFIG_FILE="$SCRIPT_DIR/.statusline.conf"
-echo "ICONS=$icon_mode" > "$CONFIG_FILE"
+{
+  echo "ICONS=$icon_mode"
+  echo "SHOW_COST=$show_cost"
+} > "$CONFIG_FILE"
 
 echo "Installed claude-statusline."
 echo "  Script: $STATUSLINE_SCRIPT"
