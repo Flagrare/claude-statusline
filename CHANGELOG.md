@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.0.1 — 2026-05-25
+
+### Bug Fixes
+
+- **Session cost**: now appears for usernames containing dots or other
+  non-alphanumeric characters. The project-key derivation was only
+  replacing `/` with `-`, but Claude Code replaces all special chars.
+
+---
+
 ## v2.0.0 — 2026-05-25
 
 Install without git. One curl command gets the statusline running; updates and uninstall work the same way. Existing clone-based installs are migrated automatically on first `/statusline-update`.
