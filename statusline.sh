@@ -229,8 +229,8 @@ if [ -n "$cwd" ]; then
     if [ -n "$upstream" ]; then
       ahead=$(git -C "$cwd" rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
       behind=$(git -C "$cwd" rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
-      [ "$ahead" -gt 0 ]  && sync_seg="${sync_seg} ${CLR_GREEN}${ICON_AHEAD}${ahead}${CLR_RESET}"
-      [ "$behind" -gt 0 ] && sync_seg="${sync_seg} ${CLR_YELLOW}${ICON_BEHIND}${behind}${CLR_RESET}"
+      [ "$ahead" -gt 0 ]  && sync_seg="${sync_seg} ${CLR_GREEN}${ICON_AHEAD} ${ahead}${CLR_RESET}"
+      [ "$behind" -gt 0 ] && sync_seg="${sync_seg} ${CLR_YELLOW}${ICON_BEHIND} ${behind}${CLR_RESET}"
     fi
 
     git_info="${ICON_GIT} ${repo}  ${ICON_BRANCH} ${branch}${dirty_seg}${sync_seg}"
