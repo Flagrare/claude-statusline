@@ -5,7 +5,7 @@ You're mid-session, deep in a refactor, and Claude stops responding. Was that th
 This replaces it with everything you actually need to see at a glance:
 
 ```
-claude-sonnet-4-6  │  🧠  high  │  📂 myrepo  🌿 main ↑2  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
+claude-sonnet-4-6  │  🧠  high  │  📂 myrepo  🌿 main ~+ ↑2  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
 ```
 
 Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn.
