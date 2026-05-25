@@ -30,14 +30,12 @@ Emoji mode:
 ## Install
 
 ```bash
-git clone https://github.com/Flagrare/claude-statusline
-cd claude-statusline
-bash install.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/Flagrare/claude-statusline/main/install.sh)
 ```
 
 The installer checks for `jq` (the only hard dependency), offers to install it if missing, asks whether you want emoji or Nerd Font icons, and wires up `~/.claude/settings.json`. Restart Claude Code after installing.
 
-Since the script runs from the cloned directory, pulling new commits updates it in place — no reinstall needed.
+Files are placed in `~/.claude/statusline/` and slash commands in `~/.claude/commands/`. No git clone required.
 
 ## Icon modes
 
@@ -48,24 +46,25 @@ Two rendering modes, switchable at any time without restarting:
 | **emoji** (default) | 🧠 🔥 🍃 ⚡️ 📂 🌿 | Works in every modern terminal. Use this if you're on Warp or haven't configured a Nerd Font. |
 | **nerd** | Nerd Font PUA glyphs | Crisper single-width icons, but your terminal font must be set to a [Nerd Font](https://www.nerdfonts.com/) (JetBrainsMono Nerd Font, FiraCode Nerd Font, etc.) or they'll render as invisible. |
 
-Switch from the shell:
+Switch via slash command in Claude Code:
 
-```bash
-./switch-icons.sh        # toggle
-./switch-icons.sh emoji  # set explicitly
-./switch-icons.sh nerd
+```
+/statusline-icons        # toggle
+/statusline-icons nerd   # set explicitly
+/statusline-icons emoji
 ```
 
-The change takes effect on the next status bar refresh — no restart needed.
+The change takes effect on the next status bar refresh.
 
 ## Slash commands
 
-Two Claude Code slash commands ship with the repo (available after install and a session restart):
+Three Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
 | `/statusline-icons` | Toggles between emoji and nerd mode. Pass a mode name to set directly: `/statusline-icons nerd` |
-| `/statusline-update` | Pulls the latest version from GitHub. Equivalent to running `git pull` in the install directory. |
+| `/statusline-cost` | Toggles session cost display. Pass `on`/`off` to set directly. API plan users only. |
+| `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 
 ## Requirements
 
@@ -75,14 +74,21 @@ Two Claude Code slash commands ship with the repo (available after install and a
 | `python3` or `jq` | Edits `settings.json` during install | One of them — both ship with macOS and most Linux distros |
 | [Nerd Font](https://www.nerdfonts.com/) | Only needed if you choose `nerd` icon mode | No |
 
+## Update
+
+```bash
+/statusline-update
+```
+
+Or manually: `bash <(curl -fsSL https://raw.githubusercontent.com/Flagrare/claude-statusline/main/update.sh)`
+
 ## Uninstall
 
 ```bash
-cd claude-statusline
-bash uninstall.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/Flagrare/claude-statusline/main/uninstall.sh)
 ```
 
-This removes the `statusLine` key from `~/.claude/settings.json` and leaves everything else intact. Delete the cloned directory afterwards if you want a clean slate.
+This removes the `statusLine` key from `~/.claude/settings.json`, deletes `~/.claude/statusline/`, and removes the slash command files.
 
 ## License
 

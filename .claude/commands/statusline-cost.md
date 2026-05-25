@@ -2,6 +2,6 @@ Toggle session cost display in the statusline. Pass "on"/"true" to enable or "of
 
 Run this command via Bash:
 
-"$(dirname "$(jq -r '.statusLine.command' ~/.claude/settings.json)")"/switch-cost.sh $ARGUMENTS
+~/.claude/statusline/switch-cost.sh $ARGUMENTS
 
 Report the output to the user.

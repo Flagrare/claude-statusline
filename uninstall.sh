@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
-SETTINGS="$HOME/.claude/settings.json"
+CLAUDE_DIR="$HOME/.claude"
+INSTALL_DIR="$CLAUDE_DIR/statusline"
+COMMANDS_DIR="$CLAUDE_DIR/commands"
+SETTINGS="$CLAUDE_DIR/settings.json"
 
-if [ ! -f "$SETTINGS" ]; then
-  echo "No settings.json found. Nothing to do."
-  exit 0
-fi
-
-if command -v python3 &>/dev/null; then
-  python3 - "$SETTINGS" <<'PYEOF'
+if [ -f "$SETTINGS" ]; then
+  if command -v python3 &>/dev/null; then
+    python3 - "$SETTINGS" <<'PYEOF'
 import json, sys
 settings_path = sys.argv[1]
 with open(settings_path) as f:
@@ -19,15 +18,25 @@ with open(settings_path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 PYEOF
-elif command -v jq &>/dev/null; then
-  tmp=$(mktemp)
-  jq 'del(.statusLine)' "$SETTINGS" > "$tmp"
-  mv "$tmp" "$SETTINGS"
-else
-  echo "Error: python3 or jq is required."
-  echo "Manually remove the \"statusLine\" key from $SETTINGS"
-  exit 1
+  elif command -v jq &>/dev/null; then
+    tmp=$(mktemp)
+    jq 'del(.statusLine)' "$SETTINGS" > "$tmp"
+    mv "$tmp" "$SETTINGS"
+  else
+    echo "Error: python3 or jq is required."
+    echo "Manually remove the \"statusLine\" key from $SETTINGS"
+    exit 1
+  fi
+  echo "Removed statusLine config from $SETTINGS"
 fi
 
-echo "Removed statusLine config from $SETTINGS"
-echo "You can delete this directory if you no longer need it."
+rm -f "$COMMANDS_DIR/statusline-update.md"
+rm -f "$COMMANDS_DIR/statusline-icons.md"
+rm -f "$COMMANDS_DIR/statusline-cost.md"
+echo "Removed slash commands."
+
+rm -rf "$INSTALL_DIR"
+echo "Removed $INSTALL_DIR"
+
+echo ""
+echo "claude-statusline uninstalled. Restart Claude Code to apply."

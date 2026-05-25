@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STATUSLINE_SCRIPT="$SCRIPT_DIR/statusline.sh"
+REPO="Flagrare/claude-statusline"
+BRANCH="main"
+BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
+
 CLAUDE_DIR="$HOME/.claude"
+INSTALL_DIR="$CLAUDE_DIR/statusline"
+COMMANDS_DIR="$CLAUDE_DIR/commands"
 SETTINGS="$CLAUDE_DIR/settings.json"
 
 # --- helpers ---
@@ -47,10 +51,22 @@ install_cmd_for() {
   esac
 }
 
+download() {
+  local url=$1
+  local dest=$2
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$url" -o "$dest"
+  elif command -v wget &>/dev/null; then
+    wget -qO "$dest" "$url"
+  else
+    echo "Error: curl or wget is required."
+    exit 1
+  fi
+}
+
 # --- check dependencies ---
 echo "Checking dependencies..."
 
-# jq (required at runtime)
 if ! command -v jq &>/dev/null; then
   cmd=$(install_cmd_for jq)
   if [ -n "$cmd" ]; then
@@ -67,21 +83,6 @@ if ! command -v jq &>/dev/null; then
 fi
 echo "  jq: ok"
 
-# python3 or jq for install-time JSON editing (python3 preferred)
-has_json_editor=false
-if command -v python3 &>/dev/null; then
-  has_json_editor=true
-  echo "  python3: ok (used for settings.json editing)"
-elif command -v jq &>/dev/null; then
-  has_json_editor=true
-  echo "  jq: ok (used for settings.json editing)"
-fi
-
-if [ "$has_json_editor" = false ]; then
-  echo "Error: python3 or jq is required to update settings.json."
-  exit 1
-fi
-
 # Nerd Font detection
 has_nerd_font=false
 if fc-list 2>/dev/null | grep -qi "nerd"; then
@@ -92,52 +93,53 @@ elif ls /usr/share/fonts/**/*[Nn]erd* 2>/dev/null | grep -q .; then
   has_nerd_font=true
 fi
 
-# Icon mode selection
 icon_mode="emoji"
 if [ "$has_nerd_font" = true ]; then
   echo "  nerd font: detected"
-  printf "  Use Nerd Font icons instead of emoji? (requires terminal font set to a Nerd Font) [y/N] "
+  printf "  Use Nerd Font icons instead of emoji? [y/N] "
   read -r answer
   case "$answer" in
     [yY]*) icon_mode="nerd" ;;
   esac
 else
-  printf "\n"
-  printf "  Icons will use emoji (🧠🔥🍃⚡) which work in all terminals.\n"
-  printf "  For Nerd Font icons instead, install one and re-run this installer.\n"
-  pm=$(detect_pkg_manager)
-  nf_install_cmd=""
-  case "$pm" in
-    brew) nf_install_cmd="brew install --cask font-jetbrains-mono-nerd-font" ;;
-    pacman) nf_install_cmd="sudo pacman -S --noconfirm ttf-jetbrains-mono-nerd" ;;
-  esac
-
-  if [ -n "$nf_install_cmd" ]; then
-    printf "  Install JetBrainsMono Nerd Font now? [y/N] "
-    read -r answer
-    case "$answer" in
-      [yY]*)
-        eval "$nf_install_cmd"
-        has_nerd_font=true
-        printf "  Installed! To use Nerd Font icons, set your terminal font to\n"
-        printf "  'JetBrainsMono Nerd Font' and re-run: bash install.sh\n"
-        ;;
-    esac
-  fi
-  printf "\n"
+  echo "  icons: emoji (install a Nerd Font and re-run for glyph mode)"
 fi
 
-# --- install ---
-chmod +x "$STATUSLINE_SCRIPT"
+# Cost display
+show_cost="false"
+printf "  Show session cost? (API plan users only, not for Pro/Max/Teams) [y/N] "
+read -r answer
+case "$answer" in
+  [yY]*) show_cost="true" ;;
+esac
 
-mkdir -p "$CLAUDE_DIR"
+# --- download files ---
+echo "Downloading..."
+
+mkdir -p "$INSTALL_DIR" "$COMMANDS_DIR" "$CLAUDE_DIR"
+
+download "$BASE_URL/statusline.sh" "$INSTALL_DIR/statusline.sh"
+download "$BASE_URL/switch-icons.sh" "$INSTALL_DIR/switch-icons.sh"
+download "$BASE_URL/switch-cost.sh" "$INSTALL_DIR/switch-cost.sh"
+download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
+download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
+download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
+
+chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh"
+
+# --- write config ---
+cat > "$INSTALL_DIR/.statusline.conf" <<CONF
+ICONS=$icon_mode
+SHOW_COST=$show_cost
+CONF
+
+# --- patch settings.json ---
 if [ ! -f "$SETTINGS" ]; then
   echo '{}' > "$SETTINGS"
 fi
 
-# Patch settings.json
 if command -v python3 &>/dev/null; then
-  python3 - "$SETTINGS" "$STATUSLINE_SCRIPT" <<'PYEOF'
+  python3 - "$SETTINGS" "$INSTALL_DIR/statusline.sh" <<'PYEOF'
 import json, sys
 settings_path, script_path = sys.argv[1], sys.argv[2]
 with open(settings_path) as f:
@@ -149,42 +151,15 @@ with open(settings_path, "w") as f:
 PYEOF
 elif command -v jq &>/dev/null; then
   tmp=$(mktemp)
-  jq --arg cmd "$STATUSLINE_SCRIPT" '. + {statusLine: {type: "command", "command": $cmd}}' "$SETTINGS" > "$tmp"
+  jq --arg cmd "$INSTALL_DIR/statusline.sh" '. + {statusLine: {type: "command", command: $cmd}}' "$SETTINGS" > "$tmp"
   mv "$tmp" "$SETTINGS"
 fi
 
-# Cost display (API plans only — Pro/Max/Teams subscription users should leave this off)
-show_cost="false"
-printf "  Show session cost estimate? (API plan users only — leave off for Pro/Max/Teams) [y/N] "
-read -r answer
-case "$answer" in
-  [yY]*) show_cost="true" ;;
-esac
-
-# Write config for the statusline script
-CONFIG_FILE="$SCRIPT_DIR/.statusline.conf"
-{
-  echo "ICONS=$icon_mode"
-  echo "SHOW_COST=$show_cost"
-} > "$CONFIG_FILE"
-
-# Symlink slash commands so git pull automatically surfaces new ones
-COMMANDS_SRC="$SCRIPT_DIR/.claude/commands"
-COMMANDS_DST="$CLAUDE_DIR/commands"
-mkdir -p "$COMMANDS_DST"
-if [ -d "$COMMANDS_SRC" ]; then
-  for cmd_file in "$COMMANDS_SRC"/statusline-*.md; do
-    [ -f "$cmd_file" ] || continue
-    base="$(basename "$cmd_file")"
-    rm -f "$COMMANDS_DST/$base"
-    ln -s "$cmd_file" "$COMMANDS_DST/$base"
-  done
-fi
-
+echo ""
 echo "Installed claude-statusline."
-echo "  Script: $STATUSLINE_SCRIPT"
-echo "  Config: $SETTINGS"
-echo "  Icons:  $icon_mode"
-echo "  Commands: symlinked (auto-update on git pull)"
+echo "  Location: $INSTALL_DIR"
+echo "  Icons:    $icon_mode"
+echo "  Cost:     $show_cost"
 echo ""
 echo "Restart Claude Code to see the status bar."
+echo "Use /statusline-update to get future updates."

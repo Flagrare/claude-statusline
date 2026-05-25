@@ -2,6 +2,6 @@ Switch statusline icon mode. Modes: "emoji" (default, works everywhere) or "nerd
 
 Run this command via Bash:
 
-"$(dirname "$(jq -r '.statusLine.command' ~/.claude/settings.json)")"/switch-icons.sh $ARGUMENTS
+~/.claude/statusline/switch-icons.sh $ARGUMENTS
 
 Report the output to the user.

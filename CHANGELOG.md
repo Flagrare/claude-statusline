@@ -1,10 +1,27 @@
 # Changelog
 
-## v1.2.1 — 2026-05-25
+## v2.0.0 — 2026-05-25
 
-### New Features
+Install without git. One curl command gets the statusline running; updates and uninstall work the same way. Existing clone-based installs are migrated automatically on first `/statusline-update`.
 
-- **`/statusline-cost`**: new slash command to toggle session cost display without editing `.statusline.conf` by hand. Accepts `on`, `off`, or no argument to toggle. Mirrors the existing `/statusline-icons` command.
+### General
+
+- **Install model**: `bash <(curl -fsSL ...)` downloads everything to
+  `~/.claude/statusline/` and `~/.claude/commands/`. No git clone, no
+  repo directory to maintain.
+- **`/statusline-update`**: re-downloads all scripts from GitHub,
+  preserving your `.statusline.conf` settings. Detects old clone-based
+  installs and migrates config + settings.json pointer automatically.
+- **Uninstall**: `bash <(curl ...)` now removes the install directory,
+  slash commands, and the settings.json entry in one step.
+- **`/statusline-cost`**: new slash command to toggle session cost
+  display. Accepts `on`, `off`, or no argument to toggle.
+
+### Bug Fixes
+
+- **`switch-icons.sh`**: toggling icon mode no longer destroys the
+  `SHOW_COST` setting. Was overwriting the entire config file; now
+  edits only the `ICONS=` line.
 
 ---
 
