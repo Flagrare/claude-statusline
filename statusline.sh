@@ -240,8 +240,8 @@ fi
 # --- session cost (opt-in: set SHOW_COST=true in .statusline.conf) ---
 cost_seg=""
 if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null && [ -d "$HOME/.claude/projects" ]; then
-  # Derive project dir: Claude encodes cwd by replacing / with -
-  project_key=$(printf "%s" "${cwd:-$PWD}" | sed 's|/|-|g')
+  # Derive project dir: Claude encodes cwd by replacing non-alphanumeric chars with -
+  project_key=$(printf "%s" "${cwd:-$PWD}" | sed 's|[^a-zA-Z0-9-]|-|g')
   project_dir="$HOME/.claude/projects/${project_key}"
   session_file=$(ls -t "${project_dir}"/*.jsonl 2>/dev/null | head -1)
   if [ -f "$session_file" ]; then
