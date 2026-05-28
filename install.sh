@@ -130,6 +130,11 @@ download "$BASE_URL/switch-git-diff-stats.sh" "$INSTALL_DIR/switch-git-diff-stat
 download "$BASE_URL/switch-pr.sh" "$INSTALL_DIR/switch-pr.sh"
 download "$BASE_URL/switch-worktree.sh" "$INSTALL_DIR/switch-worktree.sh"
 download "$BASE_URL/switch-conflicts.sh" "$INSTALL_DIR/switch-conflicts.sh"
+download "$BASE_URL/switch-output-style.sh" "$INSTALL_DIR/switch-output-style.sh"
+download "$BASE_URL/switch-session-id.sh" "$INSTALL_DIR/switch-session-id.sh"
+download "$BASE_URL/switch-version.sh" "$INSTALL_DIR/switch-version.sh"
+download "$BASE_URL/switch-cwd.sh" "$INSTALL_DIR/switch-cwd.sh"
+download "$BASE_URL/switch-extra-usage.sh" "$INSTALL_DIR/switch-extra-usage.sh"
 download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
 download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
 download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
@@ -141,6 +146,11 @@ download "$BASE_URL/.claude/commands/statusline-git-diff-stats.md" "$COMMANDS_DI
 download "$BASE_URL/.claude/commands/statusline-pr.md" "$COMMANDS_DIR/statusline-pr.md"
 download "$BASE_URL/.claude/commands/statusline-worktree.md" "$COMMANDS_DIR/statusline-worktree.md"
 download "$BASE_URL/.claude/commands/statusline-conflicts.md" "$COMMANDS_DIR/statusline-conflicts.md"
+download "$BASE_URL/.claude/commands/statusline-output-style.md" "$COMMANDS_DIR/statusline-output-style.md"
+download "$BASE_URL/.claude/commands/statusline-session-id.md" "$COMMANDS_DIR/statusline-session-id.md"
+download "$BASE_URL/.claude/commands/statusline-version.md" "$COMMANDS_DIR/statusline-version.md"
+download "$BASE_URL/.claude/commands/statusline-cwd.md" "$COMMANDS_DIR/statusline-cwd.md"
+download "$BASE_URL/.claude/commands/statusline-extra-usage.md" "$COMMANDS_DIR/statusline-extra-usage.md"
 
 chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
          "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh" \
@@ -151,7 +161,12 @@ chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
          "$INSTALL_DIR/switch-git-diff-stats.sh" \
          "$INSTALL_DIR/switch-pr.sh" \
          "$INSTALL_DIR/switch-worktree.sh" \
-         "$INSTALL_DIR/switch-conflicts.sh"
+         "$INSTALL_DIR/switch-conflicts.sh" \
+         "$INSTALL_DIR/switch-output-style.sh" \
+         "$INSTALL_DIR/switch-session-id.sh" \
+         "$INSTALL_DIR/switch-version.sh" \
+         "$INSTALL_DIR/switch-cwd.sh" \
+         "$INSTALL_DIR/switch-extra-usage.sh"
 
 # --- write config ---
 # SHOW_SONNET_LIMIT defaults to false — feature is opt-in via /statusline-sonnet
@@ -171,6 +186,11 @@ SHOW_GIT_DIFF_STATS=false
 SHOW_PR=false
 SHOW_WORKTREE=true
 SHOW_CONFLICTS=true
+SHOW_OUTPUT_STYLE=false
+SHOW_SESSION_ID=false
+SHOW_VERSION=false
+SHOW_CWD=false
+SHOW_EXTRA_USAGE=false
 CONF
 
 # --- patch settings.json ---

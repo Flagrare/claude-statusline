@@ -25,6 +25,11 @@ Emoji mode:
 | Git repo + branch | Repo name and current branch. `~` (yellow) unstaged changes, `+` (green) staged, `?` (gray) untracked files — these stack, so `~+` means you have both. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit. When you're in a linked worktree, the folder icon swaps to a worktree-specific glyph (toggleable with `/statusline-worktree`). `!N` (red) appears next to the dirty indicators when there are unresolved merge conflicts (`/statusline-conflicts`). |
 | Git diff stats | **Opt-in** — `+N` green / `-N` red insertion and deletion totals across staged + unstaged. Enable with `/statusline-git-diff-stats`. |
 | PR link | **Opt-in** — clickable `#1234` (OSC8 hyperlink) when the current branch has an associated GitHub PR. Color-coded by state (open/draft/merged/closed). Requires `gh` CLI. Cache-only render, never blocks. Enable with `/statusline-pr`. |
+| Output style | **Opt-in** — dim `[explanatory]` / `[learning]` badge next to the model name. Enable with `/statusline-output-style`. |
+| Session ID | **Opt-in** — trailing 6-char prefix of the session UUID. Enable with `/statusline-session-id`. |
+| Claude Code version | **Opt-in** — trailing `vX.Y.Z`. Enable with `/statusline-version`. |
+| CWD (outside git) | **Opt-in** — fish-style abbreviated path (`~/D/c/claude-statusline`) when you're outside any git repo. Inside a repo the existing repo name covers it. Enable with `/statusline-cwd`. |
+| Extra usage | **Opt-in** — pay-as-you-go overage spend (`+$12.50 (25%)`) when enabled on your account. Auto-hides otherwise. Enable with `/statusline-extra-usage`. |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
 | Sonnet / Opus weekly | **Opt-in** per-model weekly cap, separate from the combined 7-day limit. Anthropic enforces a Sonnet-specific weekly limit on Pro/Max plans (and Opus too on Max). Enable with `/statusline-sonnet` — see [Per-model usage](#per-model-usage-opt-in) below. |
 | Session cost | Estimated spend for the current session, calculated from the session JSONL file using Anthropic's published pricing. **Opt-in** — off by default. Set `SHOW_COST=true` in `.statusline.conf` (API plan users only; Pro/Max/Teams users don't need this) |
@@ -118,7 +123,7 @@ All three are pure local reads — no network calls. Token speed and session dur
 
 ## Slash commands
 
-Eleven Claude Code slash commands are available after install:
+Sixteen Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
@@ -132,6 +137,11 @@ Eleven Claude Code slash commands are available after install:
 | `/statusline-pr` | Toggles the clickable GitHub PR number for the current branch. Off by default; requires `gh`. |
 | `/statusline-worktree` | Toggles the worktree-specific folder icon when inside a linked git worktree. **On by default.** |
 | `/statusline-conflicts` | Toggles the `!N` red marker for unresolved merge conflicts. **On by default.** |
+| `/statusline-output-style` | Toggles the output-style badge next to the model name. Off by default. |
+| `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
+| `/statusline-version` | Toggles the trailing Claude Code version badge. Off by default. |
+| `/statusline-cwd` | Toggles the fish-style abbreviated path (shown only when outside any git repo). Off by default. |
+| `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 
 ## Requirements

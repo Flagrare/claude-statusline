@@ -19,6 +19,11 @@ SHOW_GIT_DIFF_STATS="false"
 SHOW_PR="false"
 SHOW_WORKTREE="true"
 SHOW_CONFLICTS="true"
+SHOW_OUTPUT_STYLE="false"
+SHOW_SESSION_ID="false"
+SHOW_VERSION="false"
+SHOW_CWD="false"
+SHOW_EXTRA_USAGE="false"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
@@ -111,7 +116,10 @@ eval "$(echo "$input" | jq -r '
   @sh "five_resets=\(.rate_limits.five_hour.resets_at // "")",
   @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
   @sh "seven_resets=\(.rate_limits.seven_day.resets_at // "")",
-  @sh "cwd=\(.cwd // "")"
+  @sh "cwd=\(.cwd // "")",
+  @sh "output_style=\(.output_style.name // .output_style // .outputStyle.name // .outputStyle // "")",
+  @sh "session_id=\(.session_id // .sessionId // "")",
+  @sh "cc_version=\(.version // "")"
 ' 2>/dev/null)" 2>/dev/null || true
 
 # --- context progress bar ---
@@ -438,6 +446,69 @@ pr_link_segment() {
   printf "  %s\033]8;;%s\007#%s\033]8;;\007%s" "$color" "$url" "$number" "$CLR_RESET"
 }
 
+# --- status-JSON bycatch helpers ---
+# Fish-style CWD abbreviation: every dir except the last is squashed to its
+# first character. $HOME → ~. Used only when no git_info renders (statusline
+# already shows the repo name otherwise).
+cwd_abbrev_segment() {
+  local path=$1
+  [ -z "$path" ] && return
+  case "$path" in
+    "$HOME") printf "~"; return ;;
+    "$HOME"/*) path="~${path#$HOME}" ;;
+  esac
+  local dir last abbr
+  dir=$(dirname "$path")
+  last=$(basename "$path")
+  if [ "$dir" = "/" ]; then printf "/%s" "$last"; return; fi
+  if [ "$dir" = "~" ]; then printf "~/%s" "$last"; return; fi
+  if [ "$dir" = "." ]; then printf "%s" "$last"; return; fi
+  abbr=$(printf "%s" "$dir" | awk -F/ '
+    {
+      out = ""
+      for (i = 1; i <= NF; i++) {
+        seg = $i
+        if (seg == "")      { out = out "/" }
+        else if (seg == "~"){ out = out "~/" }
+        else {
+          out = out substr(seg, 1, 1)
+          if (i < NF) out = out "/"
+        }
+      }
+      print out
+    }
+  ')
+  printf "%s/%s" "$abbr" "$last"
+}
+
+# Extra-usage / overage segment from the polled usage cache. Renders only
+# when extra_usage is enabled AND has a utilization number. Format:
+# "+$<credits> (<util>%)" — colored by utilization via rate_color.
+extra_usage_segment() {
+  local cache="$HOME/.claude/.statusline-usage-cache.json"
+  [ -f "$cache" ] || return
+  local enabled util credits cur
+  eval "$(jq -r '
+    @sh "enabled=\(.extra_usage.is_enabled // false)",
+    @sh "util=\(.extra_usage.utilization // "")",
+    @sh "credits=\(.extra_usage.used_credits // "")",
+    @sh "cur=\(.extra_usage.currency // "")"
+  ' "$cache" 2>/dev/null)" 2>/dev/null || return
+  [ "$enabled" != "true" ] && return
+  [ -z "$util" ] || [ "$util" = "null" ] && return
+  local util_int=${util%%.*}
+  [ -z "$util_int" ] && util_int=0
+  local color
+  color=$(rate_color "$util_int")
+  local sym="\$"
+  [ "$cur" = "EUR" ] && sym="€"
+  if [ -n "$credits" ] && [ "$credits" != "null" ]; then
+    printf "%s+%s%s (%d%%)%s" "$color" "$sym" "$credits" "$util_int" "$CLR_RESET"
+  else
+    printf "%sextra:%d%%%s" "$color" "$util_int" "$CLR_RESET"
+  fi
+}
+
 # --- rate limits (from Claude Code stdin) ---
 limit=$(format_rate_segment "5h" "$five_pct"  "$five_resets"  18000  "short")
 week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long")
@@ -614,21 +685,53 @@ if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || 
   fi
 fi
 
+# --- status-JSON & poller bycatch segments ---
+output_style_seg=""
+if [ "$SHOW_OUTPUT_STYLE" = "true" ] && [ -n "$output_style" ] && [ "$output_style" != "null" ]; then
+  output_style_seg="${CLR_DIM}[${output_style}]${CLR_RESET}"
+fi
+
+session_id_seg=""
+if [ "$SHOW_SESSION_ID" = "true" ] && [ -n "$session_id" ]; then
+  session_id_seg="${CLR_DIM}${session_id:0:6}${CLR_RESET}"
+fi
+
+version_seg=""
+if [ "$SHOW_VERSION" = "true" ] && [ -n "$cc_version" ]; then
+  version_seg="${CLR_DIM}v${cc_version}${CLR_RESET}"
+fi
+
+# CWD abbreviation: only renders when git_info is empty (no repo to display)
+cwd_seg=""
+if [ "$SHOW_CWD" = "true" ] && [ -z "$git_info" ] && [ -n "$cwd" ]; then
+  cwd_seg="${ICON_GIT} ${CLR_DIM}$(cwd_abbrev_segment "$cwd")${CLR_RESET}"
+fi
+
+extra_seg=""
+if [ "$SHOW_EXTRA_USAGE" = "true" ]; then
+  extra_seg=$(extra_usage_segment)
+fi
+
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
 # --- assemble ---
 parts="$model"
+[ -n "$output_style_seg" ] && parts="${parts} ${output_style_seg}"
 [ -n "$effort_seg" ]      && parts="${parts}${div}${effort_seg}"
 [ -n "$session_dur_seg" ] && parts="${parts}${div}${session_dur_seg}"
 [ -n "$git_info" ]        && parts="${parts}${div}${git_info}"
+[ -n "$cwd_seg" ]         && parts="${parts}${div}${cwd_seg}"
 [ -n "$limit" ]           && parts="${parts}${div}${limit}"
 [ -n "$week_limit" ]      && parts="${parts}${div}${week_limit}"
 [ -n "$sonnet_limit" ]    && parts="${parts}${div}${sonnet_limit}"
 [ -n "$opus_limit" ]      && parts="${parts}${div}${opus_limit}"
+[ -n "$extra_seg" ]       && parts="${parts}${div}${extra_seg}"
 [ -n "$cost_seg" ]        && parts="${parts}${div}${cost_seg}"
 [ -n "$token_speed_seg" ] && parts="${parts}${div}${token_speed_seg}"
 parts="${parts}${div}${ctx}"
 [ -n "$compaction_seg" ]  && parts="${parts} ${compaction_seg}"
+[ -n "$session_id_seg" ]  && parts="${parts}${div}${session_id_seg}"
+[ -n "$version_seg" ]     && parts="${parts}${div}${version_seg}"
 
 printf "%s" "$parts"
