@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.4.0 — 2026-05-28
+
+Five more opt-in segments pull from data the statusline already receives but never displayed — output style, session ID, Claude Code version, current directory (outside git), and pay-as-you-go overage.
+
+### New Features
+
+- **`/statusline-output-style`**: dim `[explanatory]` / `[learning]` badge next to the model name so you can see at a glance which output style is active.
+- **`/statusline-session-id`**: trailing 6-character prefix of the session UUID. Useful when juggling multiple sessions in tmux/iTerm splits.
+- **`/statusline-version`**: trailing `vX.Y.Z` badge so you can spot when Claude Code has been updated under you.
+- **`/statusline-cwd`**: fish-style abbreviated path (`~/D/c/claude-statusline`) when you're outside any git repo. Hidden inside a repo since the repo name already covers it.
+- **`/statusline-extra-usage`**: surfaces pay-as-you-go overage spend (`+$12.50 (25%)`) when enabled on your account, color-coded by utilization. Auto-hides when overage isn't active, so leaving it on is safe.
+
+---
+
 ## v2.3.0 — 2026-05-28
 
 Four new toggles deepen the git segment with information you previously had to run a command to see. Worktree marker and conflicts indicator default on — both surface state you almost always want to know.
