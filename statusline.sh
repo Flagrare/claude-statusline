@@ -15,6 +15,10 @@ SHOW_SONNET_LIMIT="false"
 SHOW_SESSION_DURATION="false"
 SHOW_TOKEN_SPEED="false"
 SHOW_COMPACTION="false"
+SHOW_GIT_DIFF_STATS="false"
+SHOW_PR="false"
+SHOW_WORKTREE="true"
+SHOW_CONFLICTS="true"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
@@ -52,6 +56,7 @@ case "$ICONS" in
     ICON_CLOCK=$'\xef\x80\x97'        # nf-fa-clock_o         (U+F017)
     ICON_GAUGE=$'\xef\x83\xa4'        # nf-fa-tachometer      (U+F0E4)
     ICON_COMPACT=$'\xef\x80\xa1'      # nf-fa-refresh         (U+F021)
+    ICON_WORKTREE=$'\xef\x84\xa6'     # nf-fa-code_fork       (U+F126)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -65,6 +70,7 @@ case "$ICONS" in
     ICON_CLOCK="◷"    # U+25F7 WHITE CIRCLE WITH UPPER-RIGHT QUADRANT
     ICON_GAUGE="⇶"    # U+21F6 THREE RIGHTWARDS ARROWS — speed
     ICON_COMPACT="↺"  # U+21BA ANTICLOCKWISE OPEN CIRCLE ARROW
+    ICON_WORKTREE="⎇" # U+2387 ALTERNATIVE KEY SYMBOL    — linked worktree
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -78,6 +84,7 @@ case "$ICONS" in
     ICON_CLOCK="[t]"
     ICON_GAUGE="[s]"
     ICON_COMPACT="[c]"
+    ICON_WORKTREE="[wt]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -91,6 +98,7 @@ case "$ICONS" in
     ICON_CLOCK="⏱"
     ICON_GAUGE="💨"
     ICON_COMPACT="🔄"
+    ICON_WORKTREE="🌳"
     ;;
 esac
 
@@ -363,6 +371,73 @@ compaction_segment() {
   [ "$count" -gt 0 ] && printf "%s%d" "$ICON_COMPACT" "$count"
 }
 
+# --- git depth helpers ---
+# Aggregate insertions/deletions across staged + unstaged shortstat. Empty
+# when there's nothing to show.
+git_diff_stats_segment() {
+  local target=$1
+  local line ins=0 del=0 n
+  while IFS= read -r line; do
+    n=$(printf "%s" "$line" | grep -oE '[0-9]+ insertions?' | awk '{print $1}')
+    [ -n "$n" ] && ins=$(( ins + n ))
+    n=$(printf "%s" "$line" | grep -oE '[0-9]+ deletions?' | awk '{print $1}')
+    [ -n "$n" ] && del=$(( del + n ))
+  done < <(
+    git -C "$target" diff --shortstat 2>/dev/null
+    git -C "$target" diff --cached --shortstat 2>/dev/null
+  )
+  [ "$ins" -eq 0 ] && [ "$del" -eq 0 ] && return
+  local out=""
+  [ "$ins" -gt 0 ] && out="${CLR_GREEN}+${ins}${CLR_RESET}"
+  [ "$del" -gt 0 ] && out="${out:+${out} }${CLR_RED}-${del}${CLR_RESET}"
+  printf " %s" "$out"
+}
+
+# PR link for the current branch via `gh`, rendered as an OSC8 hyperlink.
+# Cache-only — never blocks the render. Background-refreshes when the cache
+# is stale (>60s). First render after enabling shows nothing until cache fills.
+pr_link_segment() {
+  local target=$1 branch=$2
+  command -v gh >/dev/null 2>&1 || return
+  [ -z "$branch" ] && return
+  local state_dir="$HOME/.claude/.statusline-state"
+  mkdir -p "$state_dir" 2>/dev/null || return
+  # Sanitize branch (may contain `/`) and combine with repo basename for a unique key.
+  local repo_base safe_branch cache_file
+  repo_base=$(basename "$target" 2>/dev/null)
+  safe_branch=${branch//\//_}
+  cache_file="$state_dir/pr-${repo_base}-${safe_branch}.json"
+
+  # Stale check: 60s TTL. On miss/stale, background-refresh and serve stale (if any).
+  local fresh=false mtime
+  if [ -f "$cache_file" ]; then
+    mtime=$(stat -f %m "$cache_file" 2>/dev/null || stat -c %Y "$cache_file" 2>/dev/null || echo 0)
+    [ $(( $(date +%s) - mtime )) -lt 60 ] && fresh=true
+  fi
+  if [ "$fresh" != "true" ]; then
+    ( cd "$target" 2>/dev/null && \
+      gh pr view --json url,state,number 2>/dev/null > "${cache_file}.tmp" && \
+      mv "${cache_file}.tmp" "$cache_file" ) >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+  fi
+
+  [ -f "$cache_file" ] || return
+  local url state number
+  eval "$(jq -r '@sh "url=\(.url // "") state=\(.state // "") number=\(.number // "")"' "$cache_file" 2>/dev/null)" 2>/dev/null || return
+  [ -z "$number" ] && return
+
+  local color
+  case "$state" in
+    OPEN)   color="$CLR_GREEN" ;;
+    DRAFT)  color="$CLR_GRAY"  ;;
+    MERGED) color="$CLR_CYAN"  ;;
+    CLOSED) color="$CLR_RED"   ;;
+    *)      color="$CLR_GRAY"  ;;
+  esac
+  # OSC8 hyperlink: ESC ] 8 ; ; URL BEL  TEXT  ESC ] 8 ; ; BEL
+  printf "  %s\033]8;;%s\007#%s\033]8;;\007%s" "$color" "$url" "$number" "$CLR_RESET"
+}
+
 # --- rate limits (from Claude Code stdin) ---
 limit=$(format_rate_segment "5h" "$five_pct"  "$five_resets"  18000  "short")
 week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long")
@@ -407,20 +482,46 @@ if [ "$SHOW_SONNET_LIMIT" = "true" ]; then
 fi
 
 # --- git repo + branch ---
+# GIT_OPTIONAL_LOCKS=0 prevents .git/index.lock contention with concurrent
+# git processes (Claude Code's own commands, editor integrations, etc.).
 git_info=""
 if [ -n "$cwd" ]; then
+  export GIT_OPTIONAL_LOCKS=0
   git_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
   if [ -n "$git_root" ]; then
     repo=$(basename "$git_root")
     branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null || git -C "$cwd" rev-parse --short HEAD 2>/dev/null || echo "?")
 
-    # Git state indicators: ~ unstaged  + staged  ? untracked
+    # Worktree marker: swap ICON_GIT for ICON_WORKTREE when --git-dir differs
+    # from --git-common-dir (i.e. we're in a linked worktree, not the main checkout).
+    repo_icon="$ICON_GIT"
+    if [ "$SHOW_WORKTREE" = "true" ]; then
+      common_dir=$(git -C "$cwd" rev-parse --git-common-dir 2>/dev/null)
+      git_dir=$(git -C "$cwd" rev-parse --git-dir 2>/dev/null)
+      if [ -n "$common_dir" ] && [ -n "$git_dir" ] && [ "$common_dir" != "$git_dir" ]; then
+        repo_icon="$ICON_WORKTREE"
+      fi
+    fi
+
+    # Git state indicators: ~ unstaged  + staged  ? untracked  !N conflicts
     dirty_seg=""
     git -C "$cwd" diff --quiet 2>/dev/null          || dirty_seg="${dirty_seg}${CLR_YELLOW}~${CLR_RESET}"
     git -C "$cwd" diff --cached --quiet 2>/dev/null || dirty_seg="${dirty_seg}${CLR_GREEN}+${CLR_RESET}"
     git -C "$cwd" ls-files --others --exclude-standard 2>/dev/null \
       | head -1 | grep -q . && dirty_seg="${dirty_seg}${CLR_GRAY}?${CLR_RESET}"
+    if [ "$SHOW_CONFLICTS" = "true" ]; then
+      conflict_count=$(git -C "$cwd" diff --name-only --diff-filter=U 2>/dev/null | wc -l | tr -d ' ')
+      if [ "$conflict_count" -gt 0 ]; then
+        dirty_seg="${dirty_seg}${CLR_RED}!${conflict_count}${CLR_RESET}"
+      fi
+    fi
     [ -n "$dirty_seg" ] && dirty_seg=" ${dirty_seg}"
+
+    # Diff stats (opt-in): +N -N totals from staged + unstaged shortstat
+    stat_seg=""
+    if [ "$SHOW_GIT_DIFF_STATS" = "true" ]; then
+      stat_seg=$(git_diff_stats_segment "$cwd")
+    fi
 
     # Sync indicators: prefer explicit tracking branch, fall back to origin/<branch>
     sync_seg=""
@@ -437,7 +538,13 @@ if [ -n "$cwd" ]; then
       [ "$behind" -gt 0 ] && sync_seg="${sync_seg} ${CLR_YELLOW}${behind}${ICON_BEHIND}${CLR_RESET}"
     fi
 
-    git_info="${ICON_GIT} ${repo}  ${ICON_BRANCH} ${branch}${dirty_seg}${sync_seg}"
+    # PR link (opt-in, cache-only background refresh)
+    pr_seg=""
+    if [ "$SHOW_PR" = "true" ]; then
+      pr_seg=$(pr_link_segment "$git_root" "$branch")
+    fi
+
+    git_info="${repo_icon} ${repo}  ${ICON_BRANCH} ${branch}${dirty_seg}${stat_seg}${sync_seg}${pr_seg}"
   fi
 fi
 

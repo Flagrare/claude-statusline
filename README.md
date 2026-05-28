@@ -22,7 +22,9 @@ Emoji mode:
 |---------|-------------|
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
-| Git repo + branch | Repo name and current branch. `~` (yellow) unstaged changes, `+` (green) staged, `?` (gray) untracked files — these stack, so `~+` means you have both. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit |
+| Git repo + branch | Repo name and current branch. `~` (yellow) unstaged changes, `+` (green) staged, `?` (gray) untracked files — these stack, so `~+` means you have both. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit. When you're in a linked worktree, the folder icon swaps to a worktree-specific glyph (toggleable with `/statusline-worktree`). `!N` (red) appears next to the dirty indicators when there are unresolved merge conflicts (`/statusline-conflicts`). |
+| Git diff stats | **Opt-in** — `+N` green / `-N` red insertion and deletion totals across staged + unstaged. Enable with `/statusline-git-diff-stats`. |
+| PR link | **Opt-in** — clickable `#1234` (OSC8 hyperlink) when the current branch has an associated GitHub PR. Color-coded by state (open/draft/merged/closed). Requires `gh` CLI. Cache-only render, never blocks. Enable with `/statusline-pr`. |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
 | Sonnet / Opus weekly | **Opt-in** per-model weekly cap, separate from the combined 7-day limit. Anthropic enforces a Sonnet-specific weekly limit on Pro/Max plans (and Opus too on Max). Enable with `/statusline-sonnet` — see [Per-model usage](#per-model-usage-opt-in) below. |
 | Session cost | Estimated spend for the current session, calculated from the session JSONL file using Anthropic's published pricing. **Opt-in** — off by default. Set `SHOW_COST=true` in `.statusline.conf` (API plan users only; Pro/Max/Teams users don't need this) |
@@ -116,7 +118,7 @@ All three are pure local reads — no network calls. Token speed and session dur
 
 ## Slash commands
 
-Seven Claude Code slash commands are available after install:
+Eleven Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
@@ -126,6 +128,10 @@ Seven Claude Code slash commands are available after install:
 | `/statusline-session-duration` | Toggles the session duration segment. Pass `on`/`off` to set directly. |
 | `/statusline-token-speed` | Toggles the token speed segment. Pass `on`/`off` to set directly. |
 | `/statusline-compaction` | Toggles the compaction counter. Pass `on`/`off` to set directly. |
+| `/statusline-git-diff-stats` | Toggles the `+N -N` diff totals next to the dirty indicators. Off by default. |
+| `/statusline-pr` | Toggles the clickable GitHub PR number for the current branch. Off by default; requires `gh`. |
+| `/statusline-worktree` | Toggles the worktree-specific folder icon when inside a linked git worktree. **On by default.** |
+| `/statusline-conflicts` | Toggles the `!N` red marker for unresolved merge conflicts. **On by default.** |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 
 ## Requirements
