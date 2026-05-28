@@ -26,7 +26,10 @@ Emoji mode:
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
 | Sonnet / Opus weekly | **Opt-in** per-model weekly cap, separate from the combined 7-day limit. Anthropic enforces a Sonnet-specific weekly limit on Pro/Max plans (and Opus too on Max). Enable with `/statusline-sonnet` — see [Per-model usage](#per-model-usage-opt-in) below. |
 | Session cost | Estimated spend for the current session, calculated from the session JSONL file using Anthropic's published pricing. **Opt-in** — off by default. Set `SHOW_COST=true` in `.statusline.conf` (API plan users only; Pro/Max/Teams users don't need this) |
+| ⏱ Session duration | **Opt-in** — how long the current session has been running, from the first message timestamp in the JSONL. Enable with `/statusline-session-duration` |
+| 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
+| 🔄 Compaction counter | **Opt-in** — appears next to the context bar after one or more auto-compactions in the current session. Enable with `/statusline-compaction` |
 
 ## Install
 
@@ -99,15 +102,30 @@ Click **Always Allow** so you don't see it again. The token never leaves your ma
 - Free plan users — same as above.
 - Token expired — the poller silently waits; Claude Code refreshes the keychain entry on its next API call and the next poll picks it up.
 
+## JSONL signals (opt-in)
+
+Three extra segments are derived from the current session's transcript JSONL under `~/.claude/projects/<encoded-cwd>/`. All three default to off and have their own toggle.
+
+| Command | Segment | What it shows |
+|---------|---------|--------------|
+| `/statusline-session-duration` | `⏱ 1h23m` | Elapsed time since the first message in the active session |
+| `/statusline-token-speed` | `💨 142↓ 87↑/s` | Last assistant turn's input/output tokens per second |
+| `/statusline-compaction` | `🔄2` next to the context bar | Counts auto-compaction events detected during the session |
+
+All three are pure local reads — no network calls. Token speed and session duration cost one bounded read (`head -1` + `tail -200`) of the JSONL on each render; compaction maintains a tiny per-session state file under `~/.claude/.statusline-state/`.
+
 ## Slash commands
 
-Four Claude Code slash commands are available after install:
+Seven Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
 | `/statusline-icons` | Toggles between emoji and nerd mode. Pass a mode name to set directly: `/statusline-icons nerd` |
 | `/statusline-cost` | Toggles session cost display. Pass `on`/`off` to set directly. API plan users only. |
 | `/statusline-sonnet` | Toggles the per-model weekly usage segment (Sonnet + Opus). Pass `on`/`off` to set directly. Pro/Max only. |
+| `/statusline-session-duration` | Toggles the session duration segment. Pass `on`/`off` to set directly. |
+| `/statusline-token-speed` | Toggles the token speed segment. Pass `on`/`off` to set directly. |
+| `/statusline-compaction` | Toggles the compaction counter. Pass `on`/`off` to set directly. |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 
 ## Requirements

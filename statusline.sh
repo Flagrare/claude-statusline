@@ -12,6 +12,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ICONS="emoji"
 SHOW_COST="false"
 SHOW_SONNET_LIMIT="false"
+SHOW_SESSION_DURATION="false"
+SHOW_TOKEN_SPEED="false"
+SHOW_COMPACTION="false"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
@@ -46,6 +49,9 @@ case "$ICONS" in
     ICON_BRANCH=$'\xee\x82\xa0'
     ICON_AHEAD=$'\xf3\xb0\x9c\xb7'   # nf-md-arrow_up_bold   (U+F0737)
     ICON_BEHIND=$'\xf3\xb0\x9c\xae'  # nf-md-arrow_down_bold (U+F072E)
+    ICON_CLOCK=$'\xef\x80\x97'        # nf-fa-clock_o         (U+F017)
+    ICON_GAUGE=$'\xef\x83\xa4'        # nf-fa-tachometer      (U+F0E4)
+    ICON_COMPACT=$'\xef\x80\xa1'      # nf-fa-refresh         (U+F021)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -56,6 +62,9 @@ case "$ICONS" in
     ICON_BRANCH="├"   # U+251C BOX DRAWINGS TEE   — branch off
     ICON_AHEAD="▴"    # U+25B4 SMALL UP TRIANGLE
     ICON_BEHIND="▾"   # U+25BE SMALL DOWN TRIANGLE
+    ICON_CLOCK="◷"    # U+25F7 WHITE CIRCLE WITH UPPER-RIGHT QUADRANT
+    ICON_GAUGE="⇶"    # U+21F6 THREE RIGHTWARDS ARROWS — speed
+    ICON_COMPACT="↺"  # U+21BA ANTICLOCKWISE OPEN CIRCLE ARROW
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -66,6 +75,9 @@ case "$ICONS" in
     ICON_BRANCH="|-"
     ICON_AHEAD="^"
     ICON_BEHIND="v"
+    ICON_CLOCK="[t]"
+    ICON_GAUGE="[s]"
+    ICON_COMPACT="[c]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -76,6 +88,9 @@ case "$ICONS" in
     ICON_BRANCH="🌿"
     ICON_AHEAD="↑"
     ICON_BEHIND="↓"
+    ICON_CLOCK="⏱"
+    ICON_GAUGE="💨"
+    ICON_COMPACT="🔄"
     ;;
 esac
 
@@ -241,6 +256,113 @@ iso_to_epoch() {
   fi
 }
 
+# --- JSONL session-derived signals ---
+# Locate the active session's JSONL file. Claude Code encodes the cwd by
+# replacing non-alphanumeric chars with '-' under ~/.claude/projects/.
+discover_session_file() {
+  local target_cwd=$1
+  [ -z "$target_cwd" ] && return
+  [ ! -d "$HOME/.claude/projects" ] && return
+  local key dir
+  key=$(printf "%s" "$target_cwd" | sed 's|[^a-zA-Z0-9-]|-|g')
+  dir="$HOME/.claude/projects/${key}"
+  ls -t "${dir}"/*.jsonl 2>/dev/null | head -1
+}
+
+# Single-pass parser: head -1 (session start) + tail -N (recent turns) bounds
+# the scan so growing transcripts don't slow renders. Emits eval-safe shell
+# assignments for first/last user/assistant timestamps and last-turn tokens.
+parse_jsonl_signals() {
+  local file=$1
+  [ -f "$file" ] || return
+  { head -n 1 "$file"; tail -n 200 "$file"; } 2>/dev/null | awk '
+    function extract_str(line, key,    i, rest) {
+      i = index(line, "\"" key "\":\"")
+      if (!i) return ""
+      rest = substr(line, i + length(key) + 4)
+      return substr(rest, 1, index(rest, "\"") - 1)
+    }
+    function extract_num(line, key,    i, rest) {
+      i = index(line, "\"" key "\"")
+      if (!i) return 0
+      rest = substr(line, i + length(key) + 2)
+      sub(/^[^0-9]*/, "", rest)
+      match(rest, /^[0-9]+/)
+      return (RLENGTH > 0) ? substr(rest, 1, RLENGTH) + 0 : 0
+    }
+    NR == 1 { first_ts = extract_str($0, "timestamp") }
+    /"type":"user"/ { pending_user_ts = extract_str($0, "timestamp") }
+    /"type":"assistant"/ {
+      last_user_ts = pending_user_ts
+      last_asst_ts = extract_str($0, "timestamp")
+      last_in = extract_num($0, "input_tokens") \
+              + extract_num($0, "cache_creation_input_tokens") \
+              + extract_num($0, "cache_read_input_tokens")
+      last_out = extract_num($0, "output_tokens")
+    }
+    END {
+      printf "JSONL_FIRST_TS=%s\n",    first_ts
+      printf "JSONL_LAST_USER_TS=%s\n", last_user_ts
+      printf "JSONL_LAST_ASST_TS=%s\n", last_asst_ts
+      printf "JSONL_LAST_IN=%d\n",      last_in
+      printf "JSONL_LAST_OUT=%d\n",     last_out
+    }
+  '
+}
+
+# Session duration: from first JSONL entry to now. Reuses format_countdown.
+session_duration_segment() {
+  local first_ts=$1
+  [ -z "$first_ts" ] && return
+  local start_epoch now elapsed
+  start_epoch=$(iso_to_epoch "$first_ts")
+  [ -z "$start_epoch" ] && return
+  now=$(date +%s)
+  elapsed=$(( now - start_epoch ))
+  [ "$elapsed" -le 0 ] && return
+  printf "%s %s%s%s" "$ICON_CLOCK" "$CLR_DIM" "$(format_countdown "$elapsed" "short")" "$CLR_RESET"
+}
+
+# Token speed: last assistant turn's tokens divided by its wall-clock latency.
+# Renders "in/out tok/s". Skips when latency is unknown or zero.
+token_speed_segment() {
+  local user_ts=$1 asst_ts=$2 in_tok=$3 out_tok=$4
+  [ -z "$user_ts" ] || [ -z "$asst_ts" ] && return
+  local u_ep a_ep dur in_rate out_rate
+  u_ep=$(iso_to_epoch "$user_ts")
+  a_ep=$(iso_to_epoch "$asst_ts")
+  [ -z "$u_ep" ] || [ -z "$a_ep" ] && return
+  dur=$(( a_ep - u_ep ))
+  [ "$dur" -le 0 ] && return
+  in_rate=$(( in_tok / dur ))
+  out_rate=$(( out_tok / dur ))
+  printf "%s %s%d↓ %d↑/s%s" "$ICON_GAUGE" "$CLR_DIM" "$in_rate" "$out_rate" "$CLR_RESET"
+}
+
+# Compaction counter: persists last-seen context % per session. On a drop >2pp
+# from a non-trivial baseline, treats it as a compaction event and increments.
+# State at ~/.claude/.statusline-state/compaction-{session-id}.json.
+compaction_segment() {
+  local current_pct=$1 session_id=$2
+  [ -z "$current_pct" ] || [ -z "$session_id" ] && return
+  local state_dir="$HOME/.claude/.statusline-state"
+  mkdir -p "$state_dir" 2>/dev/null || return
+  local state_file="$state_dir/compaction-${session_id}.json"
+  local last_pct=0 count=0
+  if [ -f "$state_file" ]; then
+    eval "$(jq -r '@sh "last_pct=\(.last_pct // 0) count=\(.count // 0)"' "$state_file" 2>/dev/null)" 2>/dev/null || true
+  fi
+  local cur_int=${current_pct%%.*}
+  [ -z "$cur_int" ] && cur_int=0
+  if [ "$last_pct" -gt 5 ] && [ "$cur_int" -lt $(( last_pct - 2 )) ]; then
+    count=$(( count + 1 ))
+  fi
+  # Atomic write to avoid torn reads if multiple renders fire concurrently.
+  local tmp="${state_file}.tmp"
+  printf '{"last_pct":%d,"count":%d}\n' "$cur_int" "$count" > "$tmp" && mv "$tmp" "$state_file"
+  [ "$count" -gt 0 ] && printf "%s%d" "$ICON_COMPACT" "$count"
+}
+
 # --- rate limits (from Claude Code stdin) ---
 limit=$(format_rate_segment "5h" "$five_pct"  "$five_resets"  18000  "short")
 week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long")
@@ -363,18 +485,43 @@ if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null && [ -d "$HOME/.claud
   fi
 fi
 
+# --- session JSONL signals (opt-in: session duration, token speed, compaction) ---
+session_dur_seg=""
+token_speed_seg=""
+compaction_seg=""
+if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || [ "$SHOW_COMPACTION" = "true" ]; then
+  jsonl_file=$(discover_session_file "${cwd:-$PWD}")
+  if [ -f "$jsonl_file" ]; then
+    # Bounded read: head -1 + tail -200 — first line carries session start,
+    # last 200 lines cover the most recent turns for token-speed pairing.
+    eval "$(parse_jsonl_signals "$jsonl_file" 2>/dev/null)" 2>/dev/null || true
+    if [ "$SHOW_SESSION_DURATION" = "true" ]; then
+      session_dur_seg=$(session_duration_segment "$JSONL_FIRST_TS")
+    fi
+    if [ "$SHOW_TOKEN_SPEED" = "true" ]; then
+      token_speed_seg=$(token_speed_segment "$JSONL_LAST_USER_TS" "$JSONL_LAST_ASST_TS" "$JSONL_LAST_IN" "$JSONL_LAST_OUT")
+    fi
+    if [ "$SHOW_COMPACTION" = "true" ]; then
+      compaction_seg=$(compaction_segment "$used_pct_raw" "$(basename "$jsonl_file" .jsonl)")
+    fi
+  fi
+fi
+
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
 # --- assemble ---
 parts="$model"
-[ -n "$effort_seg" ] && parts="${parts}${div}${effort_seg}"
-[ -n "$git_info" ]   && parts="${parts}${div}${git_info}"
-[ -n "$limit" ]        && parts="${parts}${div}${limit}"
-[ -n "$week_limit" ]   && parts="${parts}${div}${week_limit}"
-[ -n "$sonnet_limit" ] && parts="${parts}${div}${sonnet_limit}"
-[ -n "$opus_limit" ]   && parts="${parts}${div}${opus_limit}"
-[ -n "$cost_seg" ]     && parts="${parts}${div}${cost_seg}"
+[ -n "$effort_seg" ]      && parts="${parts}${div}${effort_seg}"
+[ -n "$session_dur_seg" ] && parts="${parts}${div}${session_dur_seg}"
+[ -n "$git_info" ]        && parts="${parts}${div}${git_info}"
+[ -n "$limit" ]           && parts="${parts}${div}${limit}"
+[ -n "$week_limit" ]      && parts="${parts}${div}${week_limit}"
+[ -n "$sonnet_limit" ]    && parts="${parts}${div}${sonnet_limit}"
+[ -n "$opus_limit" ]      && parts="${parts}${div}${opus_limit}"
+[ -n "$cost_seg" ]        && parts="${parts}${div}${cost_seg}"
+[ -n "$token_speed_seg" ] && parts="${parts}${div}${token_speed_seg}"
 parts="${parts}${div}${ctx}"
+[ -n "$compaction_seg" ]  && parts="${parts} ${compaction_seg}"
 
 printf "%s" "$parts"

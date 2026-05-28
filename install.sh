@@ -123,23 +123,38 @@ download "$BASE_URL/usage-poller.sh" "$INSTALL_DIR/usage-poller.sh"
 download "$BASE_URL/switch-icons.sh" "$INSTALL_DIR/switch-icons.sh"
 download "$BASE_URL/switch-cost.sh" "$INSTALL_DIR/switch-cost.sh"
 download "$BASE_URL/switch-sonnet.sh" "$INSTALL_DIR/switch-sonnet.sh"
+download "$BASE_URL/switch-session-duration.sh" "$INSTALL_DIR/switch-session-duration.sh"
+download "$BASE_URL/switch-token-speed.sh" "$INSTALL_DIR/switch-token-speed.sh"
+download "$BASE_URL/switch-compaction.sh" "$INSTALL_DIR/switch-compaction.sh"
 download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
 download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
 download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
 download "$BASE_URL/.claude/commands/statusline-sonnet.md" "$COMMANDS_DIR/statusline-sonnet.md"
+download "$BASE_URL/.claude/commands/statusline-session-duration.md" "$COMMANDS_DIR/statusline-session-duration.md"
+download "$BASE_URL/.claude/commands/statusline-token-speed.md" "$COMMANDS_DIR/statusline-token-speed.md"
+download "$BASE_URL/.claude/commands/statusline-compaction.md" "$COMMANDS_DIR/statusline-compaction.md"
 
 chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
          "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh" \
-         "$INSTALL_DIR/switch-sonnet.sh"
+         "$INSTALL_DIR/switch-sonnet.sh" \
+         "$INSTALL_DIR/switch-session-duration.sh" \
+         "$INSTALL_DIR/switch-token-speed.sh" \
+         "$INSTALL_DIR/switch-compaction.sh"
 
 # --- write config ---
 # SHOW_SONNET_LIMIT defaults to false — feature is opt-in via /statusline-sonnet
 # because it reads the OAuth token from the macOS keychain (triggers a one-time
 # permission dialog) and makes outbound calls to api.anthropic.com.
+# JSONL signals (session duration, token speed, compaction) default to false —
+# enable per feature via /statusline-session-duration, /statusline-token-speed,
+# /statusline-compaction.
 cat > "$INSTALL_DIR/.statusline.conf" <<CONF
 ICONS=$icon_mode
 SHOW_COST=$show_cost
 SHOW_SONNET_LIMIT=false
+SHOW_SESSION_DURATION=false
+SHOW_TOKEN_SPEED=false
+SHOW_COMPACTION=false
 CONF
 
 # --- patch settings.json ---

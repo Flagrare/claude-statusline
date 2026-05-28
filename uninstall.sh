@@ -34,12 +34,16 @@ rm -f "$COMMANDS_DIR/statusline-update.md"
 rm -f "$COMMANDS_DIR/statusline-icons.md"
 rm -f "$COMMANDS_DIR/statusline-cost.md"
 rm -f "$COMMANDS_DIR/statusline-sonnet.md"
+rm -f "$COMMANDS_DIR/statusline-session-duration.md"
+rm -f "$COMMANDS_DIR/statusline-token-speed.md"
+rm -f "$COMMANDS_DIR/statusline-compaction.md"
 echo "Removed slash commands."
 
 rm -rf "$INSTALL_DIR"
 echo "Removed $INSTALL_DIR"
 
 rm -f "$CLAUDE_DIR/.statusline-usage-cache.json"
+rm -rf "$CLAUDE_DIR/.statusline-state"
 
 echo ""
 echo "claude-statusline uninstalled. Restart Claude Code to apply."
