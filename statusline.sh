@@ -27,26 +27,57 @@ CLR_GRAY=$'\033[38;5;244m'
 CLR_DIM=$'\033[38;5;240m'
 CLR_RESET=$'\033[0m'
 
-# Icon definitions
-if [ "$ICONS" = "nerd" ]; then
-  ICON_FIRE=$'\xef\x81\xad'
-  ICON_LEAF=$'\xef\x81\xac'
-  ICON_BOLT=$'\xef\x83\xa7'
-  ICON_BRAIN=$'\xef\x86\x9d'
-  ICON_GIT=$'\xef\x84\x93'
-  ICON_BRANCH=$'\xee\x82\xa0'
-  ICON_AHEAD=$'\xf3\xb0\x9c\xb7'   # nf-md-arrow_up_bold   (U+F0737)
-  ICON_BEHIND=$'\xf3\xb0\x9c\xae'  # nf-md-arrow_down_bold (U+F072E)
-else
-  ICON_FIRE="🔥"
-  ICON_LEAF="🍃"
-  ICON_BOLT="⚡️"
-  ICON_BRAIN="🧠"
-  ICON_GIT="📂"
-  ICON_BRANCH="🌿"
-  ICON_AHEAD="↑"
-  ICON_BEHIND="↓"
-fi
+# Icon definitions — four modes:
+#   nerd    : Nerd Font glyphs (PUA codepoints; requires terminal font set to a Nerd Font)
+#   unicode : geometric Unicode symbols, all text-presentation (no emoji VS16).
+#             Renders at proper monospace width in terminals that mis-size emoji
+#             — e.g. Warp's default font, which scales emoji to width 1 and makes
+#             them look tiny.
+#   ascii   : pure 7-bit ASCII, multi-char bracketed forms for legibility. Lowest
+#             common denominator — works in any terminal, including non-UTF8.
+#   emoji   : default — colorful but uses emoji presentation
+case "$ICONS" in
+  nerd)
+    ICON_FIRE=$'\xef\x81\xad'
+    ICON_LEAF=$'\xef\x81\xac'
+    ICON_BOLT=$'\xef\x83\xa7'
+    ICON_BRAIN=$'\xef\x86\x9d'
+    ICON_GIT=$'\xef\x84\x93'
+    ICON_BRANCH=$'\xee\x82\xa0'
+    ICON_AHEAD=$'\xf3\xb0\x9c\xb7'   # nf-md-arrow_up_bold   (U+F0737)
+    ICON_BEHIND=$'\xf3\xb0\x9c\xae'  # nf-md-arrow_down_bold (U+F072E)
+    ;;
+  unicode)
+    ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
+    ICON_LEAF="∼"     # U+223C TILDE OPERATOR    — chill, slow waves
+    ICON_BOLT="≡"     # U+2261 IDENTICAL TO       — matching expected pace
+    ICON_BRAIN="※"    # U+203B REFERENCE MARK     — "note this" / thinking
+    ICON_GIT="◉"      # U+25C9 FISHEYE            — directory marker
+    ICON_BRANCH="├"   # U+251C BOX DRAWINGS TEE   — branch off
+    ICON_AHEAD="▴"    # U+25B4 SMALL UP TRIANGLE
+    ICON_BEHIND="▾"   # U+25BE SMALL DOWN TRIANGLE
+    ;;
+  ascii)
+    ICON_FIRE="!!"
+    ICON_LEAF="~~"
+    ICON_BOLT="=="
+    ICON_BRAIN="[*]"
+    ICON_GIT="[D]"
+    ICON_BRANCH="|-"
+    ICON_AHEAD="^"
+    ICON_BEHIND="v"
+    ;;
+  *)
+    ICON_FIRE="🔥"
+    ICON_LEAF="🍃"
+    ICON_BOLT="⚡️"
+    ICON_BRAIN="🧠"
+    ICON_GIT="📂"
+    ICON_BRANCH="🌿"
+    ICON_AHEAD="↑"
+    ICON_BEHIND="↓"
+    ;;
+esac
 
 # Parse all values upfront in a single jq call to avoid repeated parsing
 eval "$(echo "$input" | jq -r '

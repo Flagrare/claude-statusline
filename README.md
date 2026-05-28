@@ -40,19 +40,23 @@ Files are placed in `~/.claude/statusline/` and slash commands in `~/.claude/com
 
 ## Icon modes
 
-Two rendering modes, switchable at any time without restarting:
+Four rendering modes, switchable at any time without restarting:
 
 | Mode | What renders | When to use |
 |------|-------------|-------------|
-| **emoji** (default) | 🧠 🔥 🍃 ⚡️ 📂 🌿 | Works in every modern terminal. Use this if you're on Warp or haven't configured a Nerd Font. |
-| **nerd** | Nerd Font PUA glyphs | Crisper single-width icons, but your terminal font must be set to a [Nerd Font](https://www.nerdfonts.com/) (JetBrainsMono Nerd Font, FiraCode Nerd Font, etc.) or they'll render as invisible. |
+| **emoji** (default) | 🧠 🔥 🍃 ⚡️ 📂 🌿 | The colorful default. Works in most modern terminals. Some terminals (notably Warp with its default font) render emoji at width 1, making them look tiny — use `unicode` instead. |
+| **nerd** | Nerd Font PUA glyphs | Crisper single-width icons, but your terminal font must be set to a [Nerd Font](https://www.nerdfonts.com/) (JetBrainsMono Nerd Font, FiraCode Nerd Font, etc.) or they'll render as tofu. |
+| **unicode** | Geometric Unicode (`≫ ∼ ≡ ※ ◉ ├ ▴ ▾`) | All text-presentation symbols (no emoji VS16 selector), so they render at proper monospace width even in terminals that mis-size emoji. **Recommended for Warp.** |
+| **ascii** | Pure 7-bit ASCII (`!! ~~ == [*] [D] \|- ^ v`) | Maximum compatibility — works in any terminal, including non-UTF8 environments. Color still does the visual work for rate limits. |
 
-Switch via slash command in Claude Code:
+Switch via slash command in Claude Code (cycles `emoji → nerd → unicode → ascii → emoji` with no arg):
 
 ```
-/statusline-icons        # toggle
-/statusline-icons nerd   # set explicitly
+/statusline-icons          # cycle to next mode
+/statusline-icons nerd     # set explicitly
 /statusline-icons emoji
+/statusline-icons unicode
+/statusline-icons ascii
 ```
 
 The change takes effect on the next status bar refresh.
