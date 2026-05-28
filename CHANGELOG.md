@@ -2,17 +2,13 @@
 
 ## v2.1.0 — 2026-05-28
 
-You can now see how much of your **Sonnet-specific weekly quota** you've burned through, separately from the combined 7-day limit — the same number Anthropic shows in `/usage`, but always visible in the status bar. Opus weekly quota too, when your plan tracks it separately.
+A new opt-in status bar segment shows your **per-model weekly quota** — the same Sonnet-specific number Anthropic surfaces in `/usage`, but always visible. Opus too, when your plan tracks it separately. Useful when you're approaching the combined 7-day cap and need to know whether switching models would actually buy you more headroom.
 
 ### New Features
 
-- **`/statusline-sonnet`**: new slash command that toggles per-model weekly usage segments (`sonnet:N%` and `opus:N%` when applicable). Off by default — opt-in because it touches the OAuth token Claude Code stores.
-- **Background usage poller** (`usage-poller.sh`): pulls per-model utilization from `https://api.anthropic.com/api/oauth/usage` every ~5 minutes using the OAuth token Claude Code itself stores for `/usage`. No third parties. Cache at `~/.claude/.statusline-usage-cache.json`. Self-healing when the access token rotates — next successful poll picks up the new token.
-- **macOS / Linux token sources**: reads from the macOS keychain (`Claude Code-credentials`) on Darwin, falls back to `~/.claude/.credentials.json` on Linux. macOS users see a one-time keychain prompt the first time the poller runs — click "Always Allow".
-
-### Refactor
-
-- **Rate-limit rendering**: the duplicated 5h/7d formatting blocks (~50 lines each) collapsed into one `format_rate_segment()` helper. Sonnet and Opus segments are now one-line calls to the same function, sharing the existing color thresholds and velocity indicators.
+- **`/statusline-sonnet`**: toggles the per-model weekly usage segment. Renders `sonnet:N% [resets]` (and `opus:N%` when present) using the same color thresholds and velocity icons as the existing 5h / 7d segments. Off by default.
+- **Data source**: a background poller calls Anthropic's `/api/oauth/usage` every ~5 min using the OAuth token Claude Code already stores for `/usage` — same endpoint, no third parties. Cached at `~/.claude/.statusline-usage-cache.json`.
+- **macOS first-run**: macOS shows a one-time keychain dialog the first time the poller reads the token. Click "Always Allow".
 
 ---
 
