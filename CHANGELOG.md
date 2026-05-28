@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.2.0 — 2026-05-28
+
+Three new opt-in segments surface signals already sitting in your session transcript — how long the session has been running, how fast the last turn produced tokens, and how many times context auto-compacted. All three read the JSONL directly, default off, and toggle independently.
+
+### New Features
+
+- **`/statusline-session-duration`**: adds a `⏱ 1h23m` segment showing elapsed time since the first message in the current session.
+- **`/statusline-token-speed`**: adds a `💨 142↓ 87↑/s` segment showing the last assistant turn's input/output tokens per second. Input rate includes cached tokens.
+- **`/statusline-compaction`**: adds a `🔄N` marker next to the context bar after one or more auto-compactions in the session. Hidden when the count is zero.
+
+---
+
 ## v2.1.0 — 2026-05-28
 
 A new opt-in status bar segment shows your **per-model weekly quota** — the same Sonnet-specific number Anthropic surfaces in `/usage`, but always visible. Opus too, when your plan tracks it separately. Useful when you're approaching the combined 7-day cap and need to know whether switching models would actually buy you more headroom.
