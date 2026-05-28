@@ -61,13 +61,18 @@ echo "Updating claude-statusline..."
 mkdir -p "$INSTALL_DIR" "$COMMANDS_DIR"
 
 download "$BASE_URL/statusline.sh" "$INSTALL_DIR/statusline.sh"
+download "$BASE_URL/usage-poller.sh" "$INSTALL_DIR/usage-poller.sh"
 download "$BASE_URL/switch-icons.sh" "$INSTALL_DIR/switch-icons.sh"
 download "$BASE_URL/switch-cost.sh" "$INSTALL_DIR/switch-cost.sh"
+download "$BASE_URL/switch-sonnet.sh" "$INSTALL_DIR/switch-sonnet.sh"
 download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
 download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
 download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
+download "$BASE_URL/.claude/commands/statusline-sonnet.md" "$COMMANDS_DIR/statusline-sonnet.md"
 
-chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh"
+chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
+         "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh" \
+         "$INSTALL_DIR/switch-sonnet.sh"
 
 # --- update settings.json to point to new location ---
 if [ -f "$SETTINGS" ]; then
