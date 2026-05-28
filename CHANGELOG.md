@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.3.0 — 2026-05-28
+
+Four new toggles deepen the git segment with information you previously had to run a command to see. Worktree marker and conflicts indicator default on — both surface state you almost always want to know.
+
+### New Features
+
+- **`/statusline-conflicts`** (default on): adds a red `!N` to the dirty indicators when there are unresolved merge conflicts.
+- **`/statusline-worktree`** (default on): folder icon swaps to a worktree-specific glyph when you're inside a linked git worktree, so you can see at a glance that you're not in the main checkout.
+- **`/statusline-git-diff-stats`**: adds `+N -N` insertion/deletion totals across staged + unstaged changes.
+- **`/statusline-pr`**: adds a clickable `#1234` hyperlink (OSC8) when the current branch has an open GitHub PR. Color-coded by state (open / draft / merged / closed). Requires `gh`. Renders from a 60s background cache, never blocks.
+
+### Behaviour
+
+- Git subprocesses in the statusline now run with `GIT_OPTIONAL_LOCKS=0`, avoiding `.git/index.lock` contention when another git process (Claude Code's own commands, editor integrations) is writing the index concurrently.
+
+---
+
 ## v2.2.0 — 2026-05-28
 
 Three new opt-in segments surface signals already sitting in your session transcript — how long the session has been running, how fast the last turn produced tokens, and how many times context auto-compacted. All three read the JSONL directly, default off, and toggle independently.
