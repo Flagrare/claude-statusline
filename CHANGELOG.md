@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.1.0 — 2026-05-28
+
+You can now see how much of your **Sonnet-specific weekly quota** you've burned through, separately from the combined 7-day limit — the same number Anthropic shows in `/usage`, but always visible in the status bar. Opus weekly quota too, when your plan tracks it separately.
+
+### New Features
+
+- **`/statusline-sonnet`**: new slash command that toggles per-model weekly usage segments (`sonnet:N%` and `opus:N%` when applicable). Off by default — opt-in because it touches the OAuth token Claude Code stores.
+- **Background usage poller** (`usage-poller.sh`): pulls per-model utilization from `https://api.anthropic.com/api/oauth/usage` every ~5 minutes using the OAuth token Claude Code itself stores for `/usage`. No third parties. Cache at `~/.claude/.statusline-usage-cache.json`. Self-healing when the access token rotates — next successful poll picks up the new token.
+- **macOS / Linux token sources**: reads from the macOS keychain (`Claude Code-credentials`) on Darwin, falls back to `~/.claude/.credentials.json` on Linux. macOS users see a one-time keychain prompt the first time the poller runs — click "Always Allow".
+
+### Refactor
+
+- **Rate-limit rendering**: the duplicated 5h/7d formatting blocks (~50 lines each) collapsed into one `format_rate_segment()` helper. Sonnet and Opus segments are now one-line calls to the same function, sharing the existing color thresholds and velocity indicators.
+
+---
+
 ## v2.0.1 — 2026-05-25
 
 ### Bug Fixes

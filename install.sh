@@ -119,18 +119,27 @@ echo "Downloading..."
 mkdir -p "$INSTALL_DIR" "$COMMANDS_DIR" "$CLAUDE_DIR"
 
 download "$BASE_URL/statusline.sh" "$INSTALL_DIR/statusline.sh"
+download "$BASE_URL/usage-poller.sh" "$INSTALL_DIR/usage-poller.sh"
 download "$BASE_URL/switch-icons.sh" "$INSTALL_DIR/switch-icons.sh"
 download "$BASE_URL/switch-cost.sh" "$INSTALL_DIR/switch-cost.sh"
+download "$BASE_URL/switch-sonnet.sh" "$INSTALL_DIR/switch-sonnet.sh"
 download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
 download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
 download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
+download "$BASE_URL/.claude/commands/statusline-sonnet.md" "$COMMANDS_DIR/statusline-sonnet.md"
 
-chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh"
+chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
+         "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh" \
+         "$INSTALL_DIR/switch-sonnet.sh"
 
 # --- write config ---
+# SHOW_SONNET_LIMIT defaults to false — feature is opt-in via /statusline-sonnet
+# because it reads the OAuth token from the macOS keychain (triggers a one-time
+# permission dialog) and makes outbound calls to api.anthropic.com.
 cat > "$INSTALL_DIR/.statusline.conf" <<CONF
 ICONS=$icon_mode
 SHOW_COST=$show_cost
+SHOW_SONNET_LIMIT=false
 CONF
 
 # --- patch settings.json ---
@@ -160,6 +169,7 @@ echo "Installed claude-statusline."
 echo "  Location: $INSTALL_DIR"
 echo "  Icons:    $icon_mode"
 echo "  Cost:     $show_cost"
+echo "  Sonnet:   disabled (enable with /statusline-sonnet — Pro/Max only)"
 echo ""
 echo "Restart Claude Code to see the status bar."
 echo "Use /statusline-update to get future updates."
