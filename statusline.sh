@@ -776,12 +776,12 @@ model_seg="$model"
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ]   && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-# Row 1 — identity (left)            workspace + session meta (right)
+# Row 1 — identity (left)            workspace + context + session meta (right)
 row1_left=$(join_segs "$model_seg" "$effort_seg" "$session_dur_seg")
-row1_right=$(join_segs "$git_info" "$cwd_seg" "$session_id_seg" "$version_seg")
+row1_right=$(join_segs "$git_info" "$cwd_seg" "$ctx_seg" "$session_id_seg" "$version_seg")
 
-# Row 2 — live context (left)        budget / limits (right)
-row2_left=$(join_segs "$ctx_seg" "$token_speed_seg")
+# Row 2 — live speed (left)          budget / limits (right)
+row2_left=$(join_segs "$token_speed_seg")
 row2_right=$(join_segs "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$extra_seg" "$cost_seg")
 
 line1=$(justify "$row1_left" "$row1_right" "$term_width")

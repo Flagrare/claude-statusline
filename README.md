@@ -2,14 +2,14 @@
 
 You're mid-session, deep in a refactor, and Claude stops responding. Was that the rate limit? How much context is left? You scroll up trying to remember which model you're on. The built-in status bar says "claude-sonnet-4-6" and nothing else.
 
-This replaces it with everything you actually need to see at a glance, laid out across two full-width rows — identity and workspace up top, live gauges below:
+This replaces it with everything you actually need to see at a glance, laid out across two full-width rows — identity, workspace, and context up top, token budgets below:
 
 ```
-claude-sonnet-4-6  │  🧠  high                          📂 myrepo  🌿 main ~+ ↑2
-ctx: [████░░░░░░] 38%            5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  $1.23
+claude-sonnet-4-6  │  🧠  high            📂 myrepo  🌿 main ~+ ↑2  │  ctx: [████░░░░░░] 38%
+                                            5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  $1.23
 ```
 
-Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn. Each row is justified to the terminal width: stable identity (model, effort) sits left, your workspace (git, session meta) right; the context bar sits left, token budgets right. The layout adapts to width automatically — see [Layout & width](#layout--width).
+Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn. Each row is justified to the terminal width: stable identity (model, effort) sits left, while your workspace, context, and session meta sit right; the rate limits and cost anchor to the bottom-right. The layout adapts to width automatically — see [Layout & width](#layout--width).
 
 <!-- STALE since v2.5.0: both screenshots show the old single-row layout. Re-shoot in the two-row justified layout before release. -->
 Nerd Font mode:
@@ -44,8 +44,8 @@ Emoji mode:
 
 The statusline renders as two full-width rows, each justified so a left group sits flush-left and a right group flush-right:
 
-- **Row 1 — identity & workspace.** Left: model (with optional output-style badge), thinking effort, session duration. Right: git repo/branch, CWD, session ID, version.
-- **Row 2 — gauges & budget.** Left: context bar (with compaction counter), token speed. Right: 5h / 7d / per-model limits, extra usage, session cost.
+- **Row 1 — identity, workspace & context.** Left: model (with optional output-style badge), thinking effort, session duration. Right: git repo/branch, CWD, context bar (with compaction counter), session ID, version.
+- **Row 2 — budget.** Left: token speed. Right: 5h / 7d / per-model limits, extra usage, session cost.
 
 Grouping segments this way keeps the wide, variable-width pieces (git branch, rate-limit countdowns) from colliding with the stable identity text, which was the main cause of truncation when everything shared one row.
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.5.1 — 2026-05-29
+
+### Behaviour
+
+- **Context bar**: moved to the top row, just before session ID and version — restoring its position as the last status widget. The bottom row now carries only token budgets (rate limits, cost).
+
+---
+
 ## v2.5.0 — 2026-05-29
 
 The statusline now renders as two full-width rows instead of one. With every segment enabled, the old single row overflowed and truncated — model name and git branch fought for the same space. Grouping segments into justified rows fixes that and uses the whole terminal width.
