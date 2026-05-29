@@ -715,23 +715,76 @@ fi
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
-# --- assemble ---
-parts="$model"
-[ -n "$output_style_seg" ] && parts="${parts} ${output_style_seg}"
-[ -n "$effort_seg" ]      && parts="${parts}${div}${effort_seg}"
-[ -n "$session_dur_seg" ] && parts="${parts}${div}${session_dur_seg}"
-[ -n "$git_info" ]        && parts="${parts}${div}${git_info}"
-[ -n "$cwd_seg" ]         && parts="${parts}${div}${cwd_seg}"
-[ -n "$limit" ]           && parts="${parts}${div}${limit}"
-[ -n "$week_limit" ]      && parts="${parts}${div}${week_limit}"
-[ -n "$sonnet_limit" ]    && parts="${parts}${div}${sonnet_limit}"
-[ -n "$opus_limit" ]      && parts="${parts}${div}${opus_limit}"
-[ -n "$extra_seg" ]       && parts="${parts}${div}${extra_seg}"
-[ -n "$cost_seg" ]        && parts="${parts}${div}${cost_seg}"
-[ -n "$token_speed_seg" ] && parts="${parts}${div}${token_speed_seg}"
-parts="${parts}${div}${ctx}"
-[ -n "$compaction_seg" ]  && parts="${parts} ${compaction_seg}"
-[ -n "$session_id_seg" ]  && parts="${parts}${div}${session_id_seg}"
-[ -n "$version_seg" ]     && parts="${parts}${div}${version_seg}"
+# Join non-empty segments with the divider.
+join_segs() {
+  local out="" seg
+  for seg in "$@"; do
+    [ -z "$seg" ] && continue
+    if [ -z "$out" ]; then out="$seg"; else out="${out}${div}${seg}"; fi
+  done
+  printf "%s" "$out"
+}
 
-printf "%s" "$parts"
+# Display column width of a string. Strips ANSI SGR color codes and OSC8
+# hyperlink wrappers (the PR segment uses them), then corrects for emoji that
+# occupy 2 columns but count as 1 codepoint. Only our own ICON_* emoji are
+# wide; all user-supplied content (repo/branch/model/paths) is narrow text.
+disp_width() {
+  local LC_ALL="${LC_ALL:-en_US.UTF-8}"
+  local plain count e t
+  plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
+  count=${#plain}
+  if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡"; do
+      t=${plain//$e/}
+      count=$(( count + (${#plain} - ${#t}) / ${#e} ))
+    done
+    # U+FE0F variation selector counts as a codepoint but renders zero-width
+    t=${plain//$'\xef\xb8\x8f'/}
+    count=$(( count - (${#plain} - ${#t}) ))
+  fi
+  printf "%s" "$count"
+}
+
+# Spread a left and right group across the full row width. With no right group,
+# the left group renders flush-left unchanged. A 2-column floor keeps the groups
+# apart when content exceeds the width (graceful degradation, no wrap math).
+justify() {
+  local left="$1" right="$2" width="$3" pad
+  if [ -z "$right" ]; then
+    printf "%s" "$left"
+    return
+  fi
+  pad=$(( width - $(disp_width "$left") - $(disp_width "$right") ))
+  [ "$pad" -lt 2 ] && pad=2
+  printf "%s%*s%s" "$left" "$pad" "" "$right"
+}
+
+# --- terminal width (config COLS > $COLUMNS > tput > 80) ---
+# Accept only positive integers; fall through on empty/0/non-numeric.
+valid_width() { case "$1" in ''|*[!0-9]*|0) return 1 ;; *) return 0 ;; esac; }
+term_width=""
+for w in "$COLS" "$COLUMNS" "$(tput cols 2>/dev/null)"; do
+  if valid_width "$w"; then term_width="$w"; break; fi
+done
+[ -z "$term_width" ] && term_width=80
+
+# --- assemble (two justified rows) ---
+# Glue tightly-coupled segments before grouping.
+model_seg="$model"
+[ -n "$output_style_seg" ] && model_seg="${model_seg} ${output_style_seg}"
+ctx_seg="$ctx"
+[ -n "$compaction_seg" ]   && ctx_seg="${ctx_seg} ${compaction_seg}"
+
+# Row 1 — identity (left)            workspace + session meta (right)
+row1_left=$(join_segs "$model_seg" "$effort_seg" "$session_dur_seg")
+row1_right=$(join_segs "$git_info" "$cwd_seg" "$session_id_seg" "$version_seg")
+
+# Row 2 — live context (left)        budget / limits (right)
+row2_left=$(join_segs "$ctx_seg" "$token_speed_seg")
+row2_right=$(join_segs "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$extra_seg" "$cost_seg")
+
+line1=$(justify "$row1_left" "$row1_right" "$term_width")
+line2=$(justify "$row2_left" "$row2_right" "$term_width")
+
+printf "%s\n%s" "$line1" "$line2"

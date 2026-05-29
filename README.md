@@ -2,14 +2,16 @@
 
 You're mid-session, deep in a refactor, and Claude stops responding. Was that the rate limit? How much context is left? You scroll up trying to remember which model you're on. The built-in status bar says "claude-sonnet-4-6" and nothing else.
 
-This replaces it with everything you actually need to see at a glance:
+This replaces it with everything you actually need to see at a glance, laid out across two full-width rows — identity and workspace up top, live gauges below:
 
 ```
-claude-sonnet-4-6  │  🧠  high  │  📂 myrepo  🌿 main ~+ ↑2  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
+claude-sonnet-4-6  │  🧠  high                          📂 myrepo  🌿 main ~+ ↑2
+ctx: [████░░░░░░] 38%            5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  $1.23
 ```
 
-Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn.
+Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn. Each row is justified to the terminal width: stable identity (model, effort) sits left, your workspace (git, session meta) right; the context bar sits left, token budgets right. The layout adapts to width automatically — see [Layout & width](#layout--width).
 
+<!-- STALE since v2.5.0: both screenshots show the old single-row layout. Re-shoot in the two-row justified layout before release. -->
 Nerd Font mode:
 <img width="1270" height="159" alt="Nerd Font mode screenshot" src="https://github.com/user-attachments/assets/43709554-db4f-4d25-92c4-fab5fb6923d7" />
 
@@ -37,6 +39,23 @@ Emoji mode:
 | 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
 | 🔄 Compaction counter | **Opt-in** — appears next to the context bar after one or more auto-compactions in the current session. Enable with `/statusline-compaction` |
+
+## Layout & width
+
+The statusline renders as two full-width rows, each justified so a left group sits flush-left and a right group flush-right:
+
+- **Row 1 — identity & workspace.** Left: model (with optional output-style badge), thinking effort, session duration. Right: git repo/branch, CWD, session ID, version.
+- **Row 2 — gauges & budget.** Left: context bar (with compaction counter), token speed. Right: 5h / 7d / per-model limits, extra usage, session cost.
+
+Grouping segments this way keeps the wide, variable-width pieces (git branch, rate-limit countdowns) from colliding with the stable identity text, which was the main cause of truncation when everything shared one row.
+
+Width is detected automatically in this order: `COLS` (config) → `$COLUMNS` → `tput cols` → `80`. If your terminal isn't detected correctly (rows look too narrow or too wide), pin it explicitly in `.statusline.conf`:
+
+```
+COLS=160
+```
+
+On terminals narrower than the content, each row degrades gracefully — the two groups stay separated by at least two spaces rather than wrapping. The far-right segments (session ID, version) are the first to run off the edge, by design: they're the least critical.
 
 ## Install
 

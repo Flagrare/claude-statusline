@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.5.0 — 2026-05-29
+
+The statusline now renders as two full-width rows instead of one. With every segment enabled, the old single row overflowed and truncated — model name and git branch fought for the same space. Grouping segments into justified rows fixes that and uses the whole terminal width.
+
+### New Features
+
+- **Two-row justified layout**: identity and workspace on top (model, effort, session duration · git, CWD, session ID, version), gauges and budget below (context, token speed · rate limits, extra usage, cost). Each row spreads a left group flush-left and a right group flush-right, so the full terminal width is used and wide segments no longer collide.
+- **`COLS` config override**: width auto-detects (`$COLUMNS` → `tput cols` → `80`), but you can pin it in `.statusline.conf` (`COLS=160`) when your terminal isn't detected correctly.
+
+### Behaviour
+
+- On terminals narrower than the content, rows degrade gracefully — the two groups stay separated by at least two spaces rather than wrapping. Session ID and version (least critical) are the first to run off the right edge.
+
+---
+
 ## v2.4.0 — 2026-05-28
 
 Five more opt-in segments pull from data the statusline already receives but never displayed — output style, session ID, Claude Code version, current directory (outside git), and pay-as-you-go overage.
