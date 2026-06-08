@@ -108,6 +108,8 @@ Almost always a **mode mismatch**, not a bug — the script only emits a codepoi
 
 So if your nerd icons feel small, it's almost never the font — it's simply that **cell-sized monochrome glyphs look smaller than big color emoji**, which is the nature of nerd mode. Want bigger and colorful? `/statusline-icons emoji`. Want to keep nerd but nudge the scale? `adjust-icon-height = 115%`. (Only on **Ghostty < 1.2.0**, which lacked auto-resize, did a non-Mono `…Nerd Font` build actually render larger — there, the fix is to upgrade Ghostty.)
 
+<sub>Sources & live-test notes: [`docs/research/ghostty-nerd-font-sizing.md`](docs/research/ghostty-nerd-font-sizing.md).</sub>
+
 When in doubt, cycle through the four modes with `/statusline-icons` and keep whichever looks right in your terminal — there's no single correct answer across terminals and fonts.
 
 ## Per-model usage (opt-in)
