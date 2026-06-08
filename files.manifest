@@ -1,0 +1,45 @@
+# Distributable file list shared by install.sh and update.sh.
+# Format: "<kind> <repo-path>"  —  kind is one of:
+#   bin  → download to $INSTALL_DIR/<basename> and chmod +x
+#   cmd  → download to $COMMANDS_DIR/<basename>
+# Blank lines and lines starting with '#' are ignored.
+# Adding a segment is a ONE-LINE edit here — both scripts pick it up.
+
+bin statusline.sh
+bin usage-poller.sh
+bin switch-icons.sh
+bin switch-cost.sh
+bin switch-sonnet.sh
+bin switch-session-duration.sh
+bin switch-token-speed.sh
+bin switch-compaction.sh
+bin switch-git-diff-stats.sh
+bin switch-pr.sh
+bin switch-worktree.sh
+bin switch-conflicts.sh
+bin switch-output-style.sh
+bin switch-session-id.sh
+bin switch-version.sh
+bin switch-cwd.sh
+bin switch-extra-usage.sh
+bin switch-fast-mode.sh
+bin switch-context-warning.sh
+
+cmd .claude/commands/statusline-update.md
+cmd .claude/commands/statusline-icons.md
+cmd .claude/commands/statusline-cost.md
+cmd .claude/commands/statusline-sonnet.md
+cmd .claude/commands/statusline-session-duration.md
+cmd .claude/commands/statusline-token-speed.md
+cmd .claude/commands/statusline-compaction.md
+cmd .claude/commands/statusline-git-diff-stats.md
+cmd .claude/commands/statusline-pr.md
+cmd .claude/commands/statusline-worktree.md
+cmd .claude/commands/statusline-conflicts.md
+cmd .claude/commands/statusline-output-style.md
+cmd .claude/commands/statusline-session-id.md
+cmd .claude/commands/statusline-version.md
+cmd .claude/commands/statusline-cwd.md
+cmd .claude/commands/statusline-extra-usage.md
+cmd .claude/commands/statusline-fast-mode.md
+cmd .claude/commands/statusline-context-warning.md

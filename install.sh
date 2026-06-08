@@ -64,6 +64,23 @@ download() {
   fi
 }
 
+# Download every file listed in files.manifest to its destination. The manifest
+# is the single source of truth for the distributable file set, shared with
+# update.sh — adding a segment is a one-line manifest edit, not a two-script one.
+fetch_from_manifest() {
+  local manifest kind path dest
+  manifest=$(mktemp)
+  download "$BASE_URL/files.manifest" "$manifest"
+  while read -r kind path; do
+    case "$kind" in
+      ''|\#*) continue ;;
+      bin) dest="$INSTALL_DIR/$(basename "$path")"; download "$BASE_URL/$path" "$dest"; chmod +x "$dest" ;;
+      cmd) dest="$COMMANDS_DIR/$(basename "$path")"; download "$BASE_URL/$path" "$dest" ;;
+    esac
+  done < "$manifest"
+  rm -f "$manifest"
+}
+
 # --- check dependencies ---
 echo "Checking dependencies..."
 
@@ -118,61 +135,7 @@ echo "Downloading..."
 
 mkdir -p "$INSTALL_DIR" "$COMMANDS_DIR" "$CLAUDE_DIR"
 
-download "$BASE_URL/statusline.sh" "$INSTALL_DIR/statusline.sh"
-download "$BASE_URL/usage-poller.sh" "$INSTALL_DIR/usage-poller.sh"
-download "$BASE_URL/switch-icons.sh" "$INSTALL_DIR/switch-icons.sh"
-download "$BASE_URL/switch-cost.sh" "$INSTALL_DIR/switch-cost.sh"
-download "$BASE_URL/switch-sonnet.sh" "$INSTALL_DIR/switch-sonnet.sh"
-download "$BASE_URL/switch-session-duration.sh" "$INSTALL_DIR/switch-session-duration.sh"
-download "$BASE_URL/switch-token-speed.sh" "$INSTALL_DIR/switch-token-speed.sh"
-download "$BASE_URL/switch-compaction.sh" "$INSTALL_DIR/switch-compaction.sh"
-download "$BASE_URL/switch-git-diff-stats.sh" "$INSTALL_DIR/switch-git-diff-stats.sh"
-download "$BASE_URL/switch-pr.sh" "$INSTALL_DIR/switch-pr.sh"
-download "$BASE_URL/switch-worktree.sh" "$INSTALL_DIR/switch-worktree.sh"
-download "$BASE_URL/switch-conflicts.sh" "$INSTALL_DIR/switch-conflicts.sh"
-download "$BASE_URL/switch-output-style.sh" "$INSTALL_DIR/switch-output-style.sh"
-download "$BASE_URL/switch-session-id.sh" "$INSTALL_DIR/switch-session-id.sh"
-download "$BASE_URL/switch-version.sh" "$INSTALL_DIR/switch-version.sh"
-download "$BASE_URL/switch-cwd.sh" "$INSTALL_DIR/switch-cwd.sh"
-download "$BASE_URL/switch-extra-usage.sh" "$INSTALL_DIR/switch-extra-usage.sh"
-download "$BASE_URL/switch-fast-mode.sh" "$INSTALL_DIR/switch-fast-mode.sh"
-download "$BASE_URL/switch-context-warning.sh" "$INSTALL_DIR/switch-context-warning.sh"
-download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
-download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
-download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
-download "$BASE_URL/.claude/commands/statusline-sonnet.md" "$COMMANDS_DIR/statusline-sonnet.md"
-download "$BASE_URL/.claude/commands/statusline-session-duration.md" "$COMMANDS_DIR/statusline-session-duration.md"
-download "$BASE_URL/.claude/commands/statusline-token-speed.md" "$COMMANDS_DIR/statusline-token-speed.md"
-download "$BASE_URL/.claude/commands/statusline-compaction.md" "$COMMANDS_DIR/statusline-compaction.md"
-download "$BASE_URL/.claude/commands/statusline-git-diff-stats.md" "$COMMANDS_DIR/statusline-git-diff-stats.md"
-download "$BASE_URL/.claude/commands/statusline-pr.md" "$COMMANDS_DIR/statusline-pr.md"
-download "$BASE_URL/.claude/commands/statusline-worktree.md" "$COMMANDS_DIR/statusline-worktree.md"
-download "$BASE_URL/.claude/commands/statusline-conflicts.md" "$COMMANDS_DIR/statusline-conflicts.md"
-download "$BASE_URL/.claude/commands/statusline-output-style.md" "$COMMANDS_DIR/statusline-output-style.md"
-download "$BASE_URL/.claude/commands/statusline-session-id.md" "$COMMANDS_DIR/statusline-session-id.md"
-download "$BASE_URL/.claude/commands/statusline-version.md" "$COMMANDS_DIR/statusline-version.md"
-download "$BASE_URL/.claude/commands/statusline-cwd.md" "$COMMANDS_DIR/statusline-cwd.md"
-download "$BASE_URL/.claude/commands/statusline-extra-usage.md" "$COMMANDS_DIR/statusline-extra-usage.md"
-download "$BASE_URL/.claude/commands/statusline-fast-mode.md" "$COMMANDS_DIR/statusline-fast-mode.md"
-download "$BASE_URL/.claude/commands/statusline-context-warning.md" "$COMMANDS_DIR/statusline-context-warning.md"
-
-chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
-         "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh" \
-         "$INSTALL_DIR/switch-sonnet.sh" \
-         "$INSTALL_DIR/switch-session-duration.sh" \
-         "$INSTALL_DIR/switch-token-speed.sh" \
-         "$INSTALL_DIR/switch-compaction.sh" \
-         "$INSTALL_DIR/switch-git-diff-stats.sh" \
-         "$INSTALL_DIR/switch-pr.sh" \
-         "$INSTALL_DIR/switch-worktree.sh" \
-         "$INSTALL_DIR/switch-conflicts.sh" \
-         "$INSTALL_DIR/switch-output-style.sh" \
-         "$INSTALL_DIR/switch-session-id.sh" \
-         "$INSTALL_DIR/switch-version.sh" \
-         "$INSTALL_DIR/switch-cwd.sh" \
-         "$INSTALL_DIR/switch-extra-usage.sh" \
-         "$INSTALL_DIR/switch-fast-mode.sh" \
-         "$INSTALL_DIR/switch-context-warning.sh"
+fetch_from_manifest
 
 # --- write config ---
 # SHOW_SONNET_LIMIT defaults to false — feature is opt-in via /statusline-sonnet
@@ -197,6 +160,8 @@ SHOW_SESSION_ID=false
 SHOW_VERSION=false
 SHOW_CWD=false
 SHOW_EXTRA_USAGE=false
+SHOW_FAST_MODE=true
+SHOW_CONTEXT_WARNING=true
 CONF
 
 # --- patch settings.json ---
