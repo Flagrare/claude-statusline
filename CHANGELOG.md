@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.7.0 — 2026-06-08
+
+Know which version you're running, and stop conflating the plugin's version with Claude Code's.
+
+### New Features
+
+- **`/statusline-version`**: prints the installed claude-statusline version and checks GitHub for a newer one (e.g. `v2.7.0  ✓ up to date`). The version is now stamped into a `VERSION` file at install time, so it's readable locally — `cat ~/.claude/statusline/VERSION` — and `install`/`update` report it as they run.
+
+### Behaviour
+
+- **`/statusline-version` → `/statusline-claude-version`** for the Claude Code version badge. The old name read like "the plugin's version" but toggled *Claude Code's*; `/statusline-version` now reports the plugin's own (above). The underlying config flag is unchanged, so existing setups keep working untouched.
+
+---
+
 ## v2.6.0 — 2026-06-08
 
 The top row now holds everything you watch most — model, effort, git, rate limits, context — as one continuous line that wraps instead of truncating.

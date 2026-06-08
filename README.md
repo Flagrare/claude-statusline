@@ -30,7 +30,7 @@ Emoji mode:
 | PR link | **Opt-in** — clickable `PR#1234` (the whole label is an OSC8 hyperlink) when the current branch has an associated GitHub PR. Color-coded by state (open/draft/merged/closed). Requires `gh` CLI. Cache-only render, never blocks. Enable with `/statusline-pr`. |
 | Output style | **Opt-in** — dim `style:explanatory` / `style:learning` label on the second row. Enable with `/statusline-output-style`. |
 | Session ID | **Opt-in** — id-tagged 6-char prefix of the session UUID (`🆔 a1b2c3`). Enable with `/statusline-session-id`. |
-| Claude Code version | **Opt-in** — trailing `vX.Y.Z`. Enable with `/statusline-version`. |
+| Claude Code version | **Opt-in** — trailing `vX.Y.Z` (the host app's version). Enable with `/statusline-claude-version`. |
 | CWD (outside git) | **Opt-in** — fish-style abbreviated path (`~/D/c/claude-statusline`) when you're outside any git repo. Inside a repo the existing repo name covers it. Enable with `/statusline-cwd`. |
 | Extra usage | **Opt-in** — pay-as-you-go overage spend (`+$12.50 (25%)`) when enabled on your account. Auto-hides otherwise. Enable with `/statusline-extra-usage`. |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
@@ -91,6 +91,24 @@ Switch via slash command in Claude Code (cycles `emoji → nerd → unicode → 
 ```
 
 The change takes effect on the next status bar refresh.
+
+### Icons look small, washed out, or wrong
+
+Almost always a **mode mismatch**, not a bug — the script only emits a codepoint; the terminal and font decide how it looks.
+
+- **Nerd-mode icons look tiny / monochrome next to big text.** That's nerd mode working as designed: Nerd Font glyphs are single-cell, monochrome symbols (e.g. the effort icon is `nf-fa-graduation_cap`, not a 🧠 emoji). If you wanted big and colorful, switch with `/statusline-icons emoji`. If you wanted crisp-but-flat, `/statusline-icons unicode` renders at full text size with no font dependency.
+- **Nerd-mode icons render as blank boxes (tofu).** Your terminal font isn't a Nerd Font. Set it to a patched build — e.g. in Ghostty, `font-family = "JetBrainsMono Nerd Font"`. Watch the exact name: `JetBrainsMono NFM` is *not* a valid family; the real one is `JetBrainsMono Nerd Font` (or `… Nerd Font Mono`).
+- **Nerd-mode icons render but feel too small even with the right font.** Some terminals shrink Private-Use glyphs to one cell. Ghostty exposes `adjust-icon-height` (try `115%`) to nudge them up. This is a terminal setting; the statusline can't scale glyphs.
+- **Emoji look tiny / width-1 (notably Warp).** The terminal is rendering emoji in text presentation. Use `/statusline-icons unicode` instead.
+
+**On Ghostty specifically** — two things are easy to conflate, and only one is font-dependent:
+
+- **Whether glyphs render at all (tofu vs. glyph) — font-dependent.** Ghostty ships a built-in symbols-only Nerd Font, so with `font-family` *unset*, nerd glyphs always render. If someone sets `font-family` to a name that doesn't resolve (e.g. `JetBrainsMono NFM` instead of `JetBrainsMono Nerd Font Mono`), glyphs fall back to tofu until the exact name is fixed.
+- **How big the glyphs are — *not* font-dependent on Ghostty 1.2.0+.** Ghostty auto-resizes Nerd Font symbols to the cell the same way the official patcher does, whether they come from the built-in symbols or an explicit patched font. We verified this live on Ghostty 1.3.1: forcing `font-family = "…Nerd Font Mono"` changed the icon size *not at all*. So a patched font buys you nothing for size — Ghostty's docs say as much.
+
+So if your nerd icons feel small, it's almost never the font — it's simply that **cell-sized monochrome glyphs look smaller than big color emoji**, which is the nature of nerd mode. Want bigger and colorful? `/statusline-icons emoji`. Want to keep nerd but nudge the scale? `adjust-icon-height = 115%`. (Only on **Ghostty < 1.2.0**, which lacked auto-resize, did a non-Mono `…Nerd Font` build actually render larger — there, the fix is to upgrade Ghostty.)
+
+When in doubt, cycle through the four modes with `/statusline-icons` and keep whichever looks right in your terminal — there's no single correct answer across terminals and fonts.
 
 ## Per-model usage (opt-in)
 
@@ -162,9 +180,10 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-context-warning` | Toggles the `⚠ >200k` badge shown past the 200k-token threshold. **On by default**; auto-hides below it. |
 | `/statusline-output-style` | Toggles the `style:…` label on the second row. Off by default. |
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
-| `/statusline-version` | Toggles the trailing Claude Code version badge. Off by default. |
+| `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
 | `/statusline-cwd` | Toggles the fish-style abbreviated path (shown only when outside any git repo). Off by default. |
 | `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |
+| `/statusline-version` | Prints the installed claude-statusline version and checks GitHub for a newer one. |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 
 ## Requirements

@@ -33,6 +33,7 @@ fetch_from_manifest() {
     case "$kind" in
       ''|\#*) continue ;;
       bin) dest="$INSTALL_DIR/$(basename "$path")"; download "$BASE_URL/$path" "$dest"; chmod +x "$dest" ;;
+      dat) dest="$INSTALL_DIR/$(basename "$path")"; download "$BASE_URL/$path" "$dest" ;;
       cmd) dest="$COMMANDS_DIR/$(basename "$path")"; download "$BASE_URL/$path" "$dest" ;;
     esac
   done < "$manifest"

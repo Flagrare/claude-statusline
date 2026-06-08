@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Toggles the Claude Code version badge (the SHOW_VERSION flag). Renamed from
+# switch-version.sh in v2.7.0 — /statusline-version now reports the plugin's
+# own version, so the host-app badge lives under /statusline-claude-version.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF="$SCRIPT_DIR/.statusline.conf"
 
@@ -13,7 +16,7 @@ case "$arg" in
     if [ "$current" = "true" ]; then target="false"; else target="true"; fi
     ;;
   *)
-    echo "Usage: switch-version.sh [true|on|false|off]"
+    echo "Usage: switch-claude-version.sh [true|on|false|off]"
     exit 1
     ;;
 esac
@@ -25,7 +28,7 @@ else
 fi
 
 if [ "$target" = "true" ]; then
-  echo "Claude Code version: on (trailing vX.Y.Z badge)"
+  echo "Claude Code version badge: on (trailing vX.Y.Z — the host app's version)"
 else
-  echo "Claude Code version: off"
+  echo "Claude Code version badge: off"
 fi

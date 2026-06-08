@@ -1,14 +1,12 @@
-Toggle the Claude Code version badge in the statusline. Pass "on"/"true" to enable or "off"/"false" to disable. Toggles if no argument given.
+Show the installed claude-statusline version and check GitHub for a newer one. Takes no arguments.
 
-Adds a trailing dim `vX.Y.Z` so you can see at a glance when Claude Code has been updated under you.
+Prints the version stamped into your install (`~/.claude/statusline/VERSION`) and compares it against the latest on GitHub's main branch, telling you whether an update is available. This is **claude-statusline's own** version — for the Claude Code (host app) version badge, see `/statusline-claude-version`.
 
 **How it works**
-- Reads `.version` from Claude Code's stdin JSON.
-
-**Disable anytime** with `/statusline-version off`.
+- Reads the local `VERSION` file and fetches `VERSION` from the repo (one curl). Nothing is sent anywhere.
 
 Run this command via Bash:
 
-~/.claude/statusline/switch-version.sh $ARGUMENTS
+~/.claude/statusline/version-check.sh
 
 Report the output to the user.
