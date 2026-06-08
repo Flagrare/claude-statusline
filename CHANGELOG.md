@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.6.0 — 2026-06-08
+
+The top row now holds everything you watch most — model, effort, git, rate limits, context — as one continuous line that wraps instead of truncating.
+
+### Layout
+
+- **Rows**: each row is a single pipe-separated group, flush-left — the old justified left/right split (and its mid-row gap) is gone. Rate limits move up to the top row alongside the context bar; optional session meta drops to a second row that vanishes entirely when you've enabled none of it.
+- **Wrapping**: a row wider than the terminal wraps at a ` │ ` boundary instead of truncating at the edge — nothing important runs off-screen.
+
+### New Features
+
+- **`/statusline-fast-mode`**: a `⚡ fast` badge on the top row while Claude Code's Fast mode is active. On by default; auto-hides otherwise.
+- **`/statusline-context-warning`**: a red `⚠ >200k` badge once the session crosses the 200k-token long-context pricing threshold. On by default; hidden below it.
+
+### Behaviour
+
+- **Output style**: now a `style:learning` label on the second row (was a bracketed `[learning]` badge next to the model name).
+- **Session ID**: now id-tagged — `🆔 a1b2c3` (was a bare 6-char prefix).
+- **PR link**: the whole `PR#1234` label is now the clickable hyperlink (was only the number).
+
+---
+
 ## v2.5.1 — 2026-05-29
 
 ### Behaviour

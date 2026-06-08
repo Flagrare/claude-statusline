@@ -24,6 +24,8 @@ SHOW_SESSION_ID="false"
 SHOW_VERSION="false"
 SHOW_CWD="false"
 SHOW_EXTRA_USAGE="false"
+SHOW_FAST_MODE="true"
+SHOW_CONTEXT_WARNING="true"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
@@ -62,6 +64,9 @@ case "$ICONS" in
     ICON_GAUGE=$'\xef\x83\xa4'        # nf-fa-tachometer      (U+F0E4)
     ICON_COMPACT=$'\xef\x80\xa1'      # nf-fa-refresh         (U+F021)
     ICON_WORKTREE=$'\xef\x84\xa6'     # nf-fa-code_fork       (U+F126)
+    ICON_ID=$'\xef\x8b\x82'           # nf-fa-id_card         (U+F2C2)
+    ICON_FAST=$'\xef\x83\xa7'         # nf-fa-bolt            (U+F0E7)
+    ICON_WARN=$'\xef\x81\xb1'         # nf-fa-warning         (U+F071)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -76,6 +81,9 @@ case "$ICONS" in
     ICON_GAUGE="⇶"    # U+21F6 THREE RIGHTWARDS ARROWS — speed
     ICON_COMPACT="↺"  # U+21BA ANTICLOCKWISE OPEN CIRCLE ARROW
     ICON_WORKTREE="⎇" # U+2387 ALTERNATIVE KEY SYMBOL    — linked worktree
+    ICON_ID="#"       # U+0023 NUMBER SIGN              — identifier
+    ICON_FAST="»"     # U+00BB RIGHT GUILLEMET          — fast-forward
+    ICON_WARN="△"     # U+25B3 WHITE UP-POINTING TRIANGLE — caution
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -90,6 +98,9 @@ case "$ICONS" in
     ICON_GAUGE="[s]"
     ICON_COMPACT="[c]"
     ICON_WORKTREE="[wt]"
+    ICON_ID="[id]"
+    ICON_FAST=">>"
+    ICON_WARN="!"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -104,6 +115,9 @@ case "$ICONS" in
     ICON_GAUGE="💨"
     ICON_COMPACT="🔄"
     ICON_WORKTREE="🌳"
+    ICON_ID="🆔"
+    ICON_FAST="⚡"
+    ICON_WARN="⚠️"
     ;;
 esac
 
@@ -119,7 +133,9 @@ eval "$(echo "$input" | jq -r '
   @sh "cwd=\(.cwd // "")",
   @sh "output_style=\(.output_style.name // .output_style // .outputStyle.name // .outputStyle // "")",
   @sh "session_id=\(.session_id // .sessionId // "")",
-  @sh "cc_version=\(.version // "")"
+  @sh "cc_version=\(.version // "")",
+  @sh "fast_mode=\(.fast_mode // false)",
+  @sh "exceeds_200k=\(.exceeds_200k_tokens // false)"
 ' 2>/dev/null)" 2>/dev/null || true
 
 # --- context progress bar ---
@@ -443,7 +459,8 @@ pr_link_segment() {
     *)      color="$CLR_GRAY"  ;;
   esac
   # OSC8 hyperlink: ESC ] 8 ; ; URL BEL  TEXT  ESC ] 8 ; ; BEL
-  printf "  %s\033]8;;%s\007#%s\033]8;;\007%s" "$color" "$url" "$number" "$CLR_RESET"
+  # Whole "PR#<n>" label is the clickable link text.
+  printf "  %s\033]8;;%s\007PR#%s\033]8;;\007%s" "$color" "$url" "$number" "$CLR_RESET"
 }
 
 # --- status-JSON bycatch helpers ---
@@ -688,12 +705,12 @@ fi
 # --- status-JSON & poller bycatch segments ---
 output_style_seg=""
 if [ "$SHOW_OUTPUT_STYLE" = "true" ] && [ -n "$output_style" ] && [ "$output_style" != "null" ]; then
-  output_style_seg="${CLR_DIM}[${output_style}]${CLR_RESET}"
+  output_style_seg="${CLR_DIM}style:${output_style}${CLR_RESET}"
 fi
 
 session_id_seg=""
 if [ "$SHOW_SESSION_ID" = "true" ] && [ -n "$session_id" ]; then
-  session_id_seg="${CLR_DIM}${session_id:0:6}${CLR_RESET}"
+  session_id_seg="${CLR_DIM}${ICON_ID} ${session_id:0:6}${CLR_RESET}"
 fi
 
 version_seg=""
@@ -712,30 +729,32 @@ if [ "$SHOW_EXTRA_USAGE" = "true" ]; then
   extra_seg=$(extra_usage_segment)
 fi
 
+# Fast-mode badge: only present while Claude Code's Fast mode is active.
+fast_seg=""
+if [ "$SHOW_FAST_MODE" = "true" ] && [ "$fast_mode" = "true" ]; then
+  fast_seg="${CLR_YELLOW}${ICON_FAST} fast${CLR_RESET}"
+fi
+
+# Over-200k context warning: appears once the session crosses the 200k-token
+# threshold (the long-context pricing tier). Hidden below the threshold.
+ctx_warn_seg=""
+if [ "$SHOW_CONTEXT_WARNING" = "true" ] && [ "$exceeds_200k" = "true" ]; then
+  ctx_warn_seg="${CLR_RED}${ICON_WARN} >200k${CLR_RESET}"
+fi
+
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
-# Join non-empty segments with the divider.
-join_segs() {
-  local out="" seg
-  for seg in "$@"; do
-    [ -z "$seg" ] && continue
-    if [ -z "$out" ]; then out="$seg"; else out="${out}${div}${seg}"; fi
-  done
-  printf "%s" "$out"
-}
-
-# Display column width of a string. Strips ANSI SGR color codes and OSC8
-# hyperlink wrappers (the PR segment uses them), then corrects for emoji that
-# occupy 2 columns but count as 1 codepoint. Only our own ICON_* emoji are
-# wide; all user-supplied content (repo/branch/model/paths) is narrow text.
+# Display column width of a string: strip ANSI SGR + OSC8 hyperlink wrappers,
+# count codepoints, then add 1 per wide emoji (2 display cols, 1 codepoint) in
+# emoji mode. nerd/unicode/ascii glyphs are all single-width, so no correction.
 disp_width() {
   local LC_ALL="${LC_ALL:-en_US.UTF-8}"
   local plain count e t
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -746,22 +765,7 @@ disp_width() {
   printf "%s" "$count"
 }
 
-# Spread a left and right group across the full row width. With no right group,
-# the left group renders flush-left unchanged. A 2-column floor keeps the groups
-# apart when content exceeds the width (graceful degradation, no wrap math).
-justify() {
-  local left="$1" right="$2" width="$3" pad
-  if [ -z "$right" ]; then
-    printf "%s" "$left"
-    return
-  fi
-  pad=$(( width - $(disp_width "$left") - $(disp_width "$right") ))
-  [ "$pad" -lt 2 ] && pad=2
-  printf "%s%*s%s" "$left" "$pad" "" "$right"
-}
-
 # --- terminal width (config COLS > $COLUMNS > tput > 80) ---
-# Accept only positive integers; fall through on empty/0/non-numeric.
 valid_width() { case "$1" in ''|*[!0-9]*|0) return 1 ;; *) return 0 ;; esac; }
 term_width=""
 for w in "$COLS" "$COLUMNS" "$(tput cols 2>/dev/null)"; do
@@ -769,22 +773,44 @@ for w in "$COLS" "$COLUMNS" "$(tput cols 2>/dev/null)"; do
 done
 [ -z "$term_width" ] && term_width=80
 
-# --- assemble (two justified rows) ---
-# Glue tightly-coupled segments before grouping.
-model_seg="$model"
-[ -n "$output_style_seg" ] && model_seg="${model_seg} ${output_style_seg}"
+# Pack non-empty segments into physical lines no wider than $1 columns, breaking
+# at divider boundaries. A row too wide for the terminal wraps onto extra lines
+# instead of being truncated at the edge. A single segment wider than the width
+# still takes its own line — there's nothing smaller to break on.
+wrap_segs() {
+  local width=$1; shift
+  local div_w line="" out="" seg sw lw=0
+  div_w=$(disp_width "$div")
+  for seg in "$@"; do
+    [ -z "$seg" ] && continue
+    sw=$(disp_width "$seg")
+    if [ -z "$line" ]; then
+      line="$seg"; lw=$sw
+    elif [ $(( lw + div_w + sw )) -gt "$width" ]; then
+      out="${out}${line}"$'\n'
+      line="$seg"; lw=$sw
+    else
+      line="${line}${div}${seg}"; lw=$(( lw + div_w + sw ))
+    fi
+  done
+  out="${out}${line}"
+  printf "%s" "$out"
+}
+
+# --- assemble (flush-left rows, wrapped at terminal width) ---
+# Row 1 carries the original core: identity, git, usage gauges, context.
+# Row 2 carries later, optional/toggleable additions: live speed, session meta
+# (cwd, output-style, session-id, version), and budget. Each row is packed into
+# as many physical lines as its width needs (no truncation). Row 2 is suppressed
+# entirely when none of its segments are enabled.
 ctx_seg="$ctx"
-[ -n "$compaction_seg" ]   && ctx_seg="${ctx_seg} ${compaction_seg}"
+[ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-# Row 1 — identity (left)            workspace + context + session meta (right)
-row1_left=$(join_segs "$model_seg" "$effort_seg" "$session_dur_seg")
-row1_right=$(join_segs "$git_info" "$cwd_seg" "$ctx_seg" "$session_id_seg" "$version_seg")
+row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$ctx_seg" "$ctx_warn_seg")
+row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$cwd_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
 
-# Row 2 — live speed (left)          budget / limits (right)
-row2_left=$(join_segs "$token_speed_seg")
-row2_right=$(join_segs "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$extra_seg" "$cost_seg")
-
-line1=$(justify "$row1_left" "$row1_right" "$term_width")
-line2=$(justify "$row2_left" "$row2_right" "$term_width")
-
-printf "%s\n%s" "$line1" "$line2"
+if [ -n "$row2" ]; then
+  printf "%s\n%s" "$row1" "$row2"
+else
+  printf "%s" "$row1"
+fi

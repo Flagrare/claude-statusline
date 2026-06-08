@@ -2,16 +2,16 @@
 
 You're mid-session, deep in a refactor, and Claude stops responding. Was that the rate limit? How much context is left? You scroll up trying to remember which model you're on. The built-in status bar says "claude-sonnet-4-6" and nothing else.
 
-This replaces it with everything you actually need to see at a glance, laid out across two full-width rows — identity, workspace, and context up top, token budgets below:
+This replaces it with everything you actually need to see at a glance. The essentials — model, thinking effort, git branch, rate limits, context — sit together on the top row; anything optional (session meta, live speed, cost) drops to a second row only when you enable it:
 
 ```
-claude-sonnet-4-6  │  🧠  high            📂 myrepo  🌿 main ~+ ↑2  │  ctx: [████░░░░░░] 38%
-                                            5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  $1.23
+claude-sonnet-4-6  │  🧠 high  │  📂 myrepo  🌿 main ~+  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
+💨 142↓ 87↑/s  │  style:learning  │  🆔 a1b2c3  │  v2.6.0  │  $1.23
 ```
 
-Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn. Each row is justified to the terminal width: stable identity (model, effort) sits left, while your workspace, context, and session meta sit right; the rate limits and cost anchor to the bottom-right. The layout adapts to width automatically — see [Layout & width](#layout--width).
+Rate limits, context window fullness, thinking effort, git branch — color-coded and updated every turn. Each row is a continuous, pipe-separated group rendered flush-left; when a row is wider than your terminal it wraps onto another line rather than truncating. See [Layout & width](#layout--width).
 
-<!-- STALE since v2.5.0: both screenshots show the old single-row layout. Re-shoot in the two-row justified layout before release. -->
+<!-- STALE: screenshots predate the v2.6.0 continuous-row layout. Re-shoot before release. -->
 Nerd Font mode:
 <img width="1270" height="159" alt="Nerd Font mode screenshot" src="https://github.com/user-attachments/assets/43709554-db4f-4d25-92c4-fab5fb6923d7" />
 
@@ -24,11 +24,12 @@ Emoji mode:
 |---------|-------------|
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
+| ⚡ Fast mode | A `⚡ fast` badge on the top row while Claude Code's Fast mode is active. Auto-hides otherwise. **On by default** — toggle with `/statusline-fast-mode`. |
 | Git repo + branch | Repo name and current branch. `~` (yellow) unstaged changes, `+` (green) staged, `?` (gray) untracked files — these stack, so `~+` means you have both. `↑N` (green) when you have commits to push, `↓N` (yellow) when commits are waiting to pull — reads cached remote refs, no network hit. When you're in a linked worktree, the folder icon swaps to a worktree-specific glyph (toggleable with `/statusline-worktree`). `!N` (red) appears next to the dirty indicators when there are unresolved merge conflicts (`/statusline-conflicts`). |
 | Git diff stats | **Opt-in** — `+N` green / `-N` red insertion and deletion totals across staged + unstaged. Enable with `/statusline-git-diff-stats`. |
-| PR link | **Opt-in** — clickable `#1234` (OSC8 hyperlink) when the current branch has an associated GitHub PR. Color-coded by state (open/draft/merged/closed). Requires `gh` CLI. Cache-only render, never blocks. Enable with `/statusline-pr`. |
-| Output style | **Opt-in** — dim `[explanatory]` / `[learning]` badge next to the model name. Enable with `/statusline-output-style`. |
-| Session ID | **Opt-in** — trailing 6-char prefix of the session UUID. Enable with `/statusline-session-id`. |
+| PR link | **Opt-in** — clickable `PR#1234` (the whole label is an OSC8 hyperlink) when the current branch has an associated GitHub PR. Color-coded by state (open/draft/merged/closed). Requires `gh` CLI. Cache-only render, never blocks. Enable with `/statusline-pr`. |
+| Output style | **Opt-in** — dim `style:explanatory` / `style:learning` label on the second row. Enable with `/statusline-output-style`. |
+| Session ID | **Opt-in** — id-tagged 6-char prefix of the session UUID (`🆔 a1b2c3`). Enable with `/statusline-session-id`. |
 | Claude Code version | **Opt-in** — trailing `vX.Y.Z`. Enable with `/statusline-version`. |
 | CWD (outside git) | **Opt-in** — fish-style abbreviated path (`~/D/c/claude-statusline`) when you're outside any git repo. Inside a repo the existing repo name covers it. Enable with `/statusline-cwd`. |
 | Extra usage | **Opt-in** — pay-as-you-go overage spend (`+$12.50 (25%)`) when enabled on your account. Auto-hides otherwise. Enable with `/statusline-extra-usage`. |
@@ -38,24 +39,25 @@ Emoji mode:
 | ⏱ Session duration | **Opt-in** — how long the current session has been running, from the first message timestamp in the JSONL. Enable with `/statusline-session-duration` |
 | 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
+| ⚠ >200k context | A red `⚠ >200k` badge once the session crosses the 200k-token long-context pricing threshold. Hidden below it. **On by default** — toggle with `/statusline-context-warning`. |
 | 🔄 Compaction counter | **Opt-in** — appears next to the context bar after one or more auto-compactions in the current session. Enable with `/statusline-compaction` |
 
 ## Layout & width
 
-The statusline renders as two full-width rows, each justified so a left group sits flush-left and a right group flush-right:
+The statusline renders as up to two rows, split by importance rather than by alignment:
 
-- **Row 1 — identity, workspace & context.** Left: model (with optional output-style badge), thinking effort, session duration. Right: git repo/branch, CWD, context bar (with compaction counter), session ID, version.
-- **Row 2 — budget.** Left: token speed. Right: 5h / 7d / per-model limits, extra usage, session cost.
+- **Row 1 — the core.** Model, thinking effort, fast-mode badge, git repo/branch, the 5h / 7d / per-model rate limits, the context bar (with compaction counter), and the >200k warning. Everything you almost always want.
+- **Row 2 — the extras.** Token speed, session duration, CWD, output style, session ID, version, extra usage, session cost. Each is opt-in, and the whole row is suppressed when none are enabled — so a lean config is a single line with no trailing blank.
 
-Grouping segments this way keeps the wide, variable-width pieces (git branch, rate-limit countdowns) from colliding with the stable identity text, which was the main cause of truncation when everything shared one row.
+Within a row, segments are a continuous group separated by ` │ ` and rendered flush-left. There's no left/right spread: the first segment starts at column zero and the rest follow.
 
-Width is detected automatically in this order: `COLS` (config) → `$COLUMNS` → `tput cols` → `80`. If your terminal isn't detected correctly (rows look too narrow or too wide), pin it explicitly in `.statusline.conf`:
+When a row is wider than your terminal, it **wraps** onto another line at a ` │ ` boundary rather than truncating at the edge — so nothing important falls off-screen, it just flows downward. (A single segment wider than the whole terminal still takes its own line; there's nothing smaller to break on.)
+
+Width is detected automatically in this order: `COLS` (config) → `$COLUMNS` → `tput cols` → `80`. If wrapping happens too early or too late, pin it explicitly in `.statusline.conf`:
 
 ```
 COLS=160
 ```
-
-On terminals narrower than the content, each row degrades gracefully — the two groups stay separated by at least two spaces rather than wrapping. The far-right segments (session ID, version) are the first to run off the edge, by design: they're the least critical.
 
 ## Install
 
@@ -156,7 +158,9 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-pr` | Toggles the clickable GitHub PR number for the current branch. Off by default; requires `gh`. |
 | `/statusline-worktree` | Toggles the worktree-specific folder icon when inside a linked git worktree. **On by default.** |
 | `/statusline-conflicts` | Toggles the `!N` red marker for unresolved merge conflicts. **On by default.** |
-| `/statusline-output-style` | Toggles the output-style badge next to the model name. Off by default. |
+| `/statusline-fast-mode` | Toggles the `⚡ fast` badge shown while Fast mode is active. **On by default**; auto-hides when Fast mode is off. |
+| `/statusline-context-warning` | Toggles the `⚠ >200k` badge shown past the 200k-token threshold. **On by default**; auto-hides below it. |
+| `/statusline-output-style` | Toggles the `style:…` label on the second row. Off by default. |
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-version` | Toggles the trailing Claude Code version badge. Off by default. |
 | `/statusline-cwd` | Toggles the fish-style abbreviated path (shown only when outside any git repo). Off by default. |

@@ -135,6 +135,8 @@ download "$BASE_URL/switch-session-id.sh" "$INSTALL_DIR/switch-session-id.sh"
 download "$BASE_URL/switch-version.sh" "$INSTALL_DIR/switch-version.sh"
 download "$BASE_URL/switch-cwd.sh" "$INSTALL_DIR/switch-cwd.sh"
 download "$BASE_URL/switch-extra-usage.sh" "$INSTALL_DIR/switch-extra-usage.sh"
+download "$BASE_URL/switch-fast-mode.sh" "$INSTALL_DIR/switch-fast-mode.sh"
+download "$BASE_URL/switch-context-warning.sh" "$INSTALL_DIR/switch-context-warning.sh"
 download "$BASE_URL/.claude/commands/statusline-update.md" "$COMMANDS_DIR/statusline-update.md"
 download "$BASE_URL/.claude/commands/statusline-icons.md" "$COMMANDS_DIR/statusline-icons.md"
 download "$BASE_URL/.claude/commands/statusline-cost.md" "$COMMANDS_DIR/statusline-cost.md"
@@ -151,6 +153,8 @@ download "$BASE_URL/.claude/commands/statusline-session-id.md" "$COMMANDS_DIR/st
 download "$BASE_URL/.claude/commands/statusline-version.md" "$COMMANDS_DIR/statusline-version.md"
 download "$BASE_URL/.claude/commands/statusline-cwd.md" "$COMMANDS_DIR/statusline-cwd.md"
 download "$BASE_URL/.claude/commands/statusline-extra-usage.md" "$COMMANDS_DIR/statusline-extra-usage.md"
+download "$BASE_URL/.claude/commands/statusline-fast-mode.md" "$COMMANDS_DIR/statusline-fast-mode.md"
+download "$BASE_URL/.claude/commands/statusline-context-warning.md" "$COMMANDS_DIR/statusline-context-warning.md"
 
 chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
          "$INSTALL_DIR/switch-icons.sh" "$INSTALL_DIR/switch-cost.sh" \
@@ -166,7 +170,9 @@ chmod +x "$INSTALL_DIR/statusline.sh" "$INSTALL_DIR/usage-poller.sh" \
          "$INSTALL_DIR/switch-session-id.sh" \
          "$INSTALL_DIR/switch-version.sh" \
          "$INSTALL_DIR/switch-cwd.sh" \
-         "$INSTALL_DIR/switch-extra-usage.sh"
+         "$INSTALL_DIR/switch-extra-usage.sh" \
+         "$INSTALL_DIR/switch-fast-mode.sh" \
+         "$INSTALL_DIR/switch-context-warning.sh"
 
 # --- write config ---
 # SHOW_SONNET_LIMIT defaults to false — feature is opt-in via /statusline-sonnet
