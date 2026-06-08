@@ -39,7 +39,7 @@ Emoji mode:
 | ⏱ Session duration | **Opt-in** — how long the current session has been running, from the first message timestamp in the JSONL. Enable with `/statusline-session-duration` |
 | 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
-| ⚠ >200k context | A red `⚠ >200k` badge once the session crosses the 200k-token long-context pricing threshold. Hidden below it. **On by default** — toggle with `/statusline-context-warning`. |
+| ⚠ context warning | A red `⚠ >Nk` badge once the context reaches `CONTEXT_WARNING_TOKENS` (default `200000` — the long-context pricing line). The label tracks the threshold (`>200k`, `>150k`, `>1.5M`). **On by default** — set the threshold with `/statusline-context-warning 150k`, toggle with `/statusline-context-warning off`. |
 | 🔄 Compaction counter | **Opt-in** — appears next to the context bar after one or more auto-compactions in the current session. Enable with `/statusline-compaction` |
 
 ## Layout & width
@@ -65,7 +65,12 @@ COLS=160
 bash <(curl -fsSL https://raw.githubusercontent.com/Flagrare/claude-statusline/main/install.sh)
 ```
 
-The installer checks for `jq` (the only hard dependency), offers to install it if missing, asks whether you want emoji or Nerd Font icons, and wires up `~/.claude/settings.json`. Restart Claude Code after installing.
+The installer checks for `jq` (the only hard dependency), offers to install it if missing, and wires up `~/.claude/settings.json`. It opens with a choice:
+
+- **Quick** — recommended defaults; just asks emoji-vs-Nerd-Font icons and whether to show cost.
+- **Advanced** — drops you into the interactive configurator to pick the icon mode and tick exactly the features you want.
+
+You can switch later with no reinstall: run `/statusline-config` (the same checklist) anytime. Restart Claude Code after installing.
 
 Files are placed in `~/.claude/statusline/` and slash commands in `~/.claude/commands/`. No git clone required.
 
@@ -179,7 +184,8 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-worktree` | Toggles the worktree-specific folder icon when inside a linked git worktree. **On by default.** |
 | `/statusline-conflicts` | Toggles the `!N` red marker for unresolved merge conflicts. **On by default.** |
 | `/statusline-fast-mode` | Toggles the `⚡ fast` badge shown while Fast mode is active. **On by default**; auto-hides when Fast mode is off. |
-| `/statusline-context-warning` | Toggles the `⚠ >200k` badge shown past the 200k-token threshold. **On by default**; auto-hides below it. |
+| `/statusline-context-warning` | Toggles the context-warning badge, or sets its token threshold: `on`/`off`, or a count like `150000` / `150k` / `2m`. Default on at `200000`. |
+| `/statusline-config` | Opens the interactive configurator (icon mode + every feature in one checklist). Run it in your own terminal — it's interactive. |
 | `/statusline-output-style` | Toggles the `style:…` label on the second row. Off by default. |
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |

@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.8.0 — 2026-06-08
+
+Pick exactly the segments you want — at install or any time after — and warn at whatever context size you choose.
+
+### New Features
+
+- **`/statusline-config` + an Advanced install path**: one interactive checklist to set your icon mode and tick every feature on/off, instead of remembering individual toggle commands. Same screen in both places; the per-feature `/statusline-*` commands stay for quick single flips.
+- **Customizable context warning**: `/statusline-context-warning 150k` sets the threshold (default `200000`, accepts `150000` / `150k` / `2m`). The badge fires on the real context token count, and its label tracks the value — `>200k`, `>150k`, `>1.5M`.
+
+### Behaviour
+
+- The context warning now reads `total_input_tokens` from the status JSON, falling back to the old `exceeds_200k_tokens` flag when absent. Default threshold is `200000`, so existing installs render exactly as before.
+
+---
+
 ## v2.7.0 — 2026-06-08
 
 Know which version you're running, and stop conflating the plugin's version with Claude Code's.

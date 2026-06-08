@@ -101,7 +101,16 @@ if ! command -v jq &>/dev/null; then
 fi
 echo "  jq: ok"
 
-# Nerd Font detection
+# --- setup mode ---
+printf "\nSetup mode:\n"
+printf "  1) Quick    — recommended defaults (icons + cost)\n"
+printf "  2) Advanced — choose every feature\n"
+printf "> [1] "
+read -r mode_answer
+setup_mode="quick"
+case "$mode_answer" in 2|advanced|Advanced) setup_mode="advanced" ;; esac
+
+# Nerd Font detection (sets the default icon mode for both paths)
 has_nerd_font=false
 if fc-list 2>/dev/null | grep -qi "nerd"; then
   has_nerd_font=true
@@ -110,26 +119,25 @@ elif ls ~/Library/Fonts/*[Nn]erd* 2>/dev/null | grep -q .; then
 elif ls /usr/share/fonts/**/*[Nn]erd* 2>/dev/null | grep -q .; then
   has_nerd_font=true
 fi
-
-icon_mode="emoji"
-if [ "$has_nerd_font" = true ]; then
-  echo "  nerd font: detected"
-  printf "  Use Nerd Font icons instead of emoji? [y/N] "
-  read -r answer
-  case "$answer" in
-    [yY]*) icon_mode="nerd" ;;
-  esac
-else
-  echo "  icons: emoji (install a Nerd Font and re-run for glyph mode)"
-fi
-
-# Cost display
+icon_mode="emoji"; [ "$has_nerd_font" = true ] && icon_mode="nerd"
 show_cost="false"
-printf "  Show session cost? (API plan users only, not for Pro/Max/Teams) [y/N] "
-read -r answer
-case "$answer" in
-  [yY]*) show_cost="true" ;;
-esac
+
+# Quick asks the two classic questions; Advanced defers every choice to the
+# interactive configurator (run after download), so it skips them here.
+if [ "$setup_mode" = "quick" ]; then
+  icon_mode="emoji"
+  if [ "$has_nerd_font" = true ]; then
+    echo "  nerd font: detected"
+    printf "  Use Nerd Font icons instead of emoji? [y/N] "
+    read -r answer
+    case "$answer" in [yY]*) icon_mode="nerd" ;; esac
+  else
+    echo "  icons: emoji (install a Nerd Font and re-run for glyph mode)"
+  fi
+  printf "  Show session cost? (API plan users only, not for Pro/Max/Teams) [y/N] "
+  read -r answer
+  case "$answer" in [yY]*) show_cost="true" ;; esac
+fi
 
 # --- download files ---
 echo "Downloading..."
@@ -163,6 +171,7 @@ SHOW_CWD=false
 SHOW_EXTRA_USAGE=false
 SHOW_FAST_MODE=true
 SHOW_CONTEXT_WARNING=true
+CONTEXT_WARNING_TOKENS=200000
 CONF
 
 # --- patch settings.json ---
@@ -187,12 +196,18 @@ elif command -v jq &>/dev/null; then
   mv "$tmp" "$SETTINGS"
 fi
 
+# Advanced: hand off to the interactive configurator to pick icon mode + features.
+if [ "$setup_mode" = "advanced" ] && [ -x "$INSTALL_DIR/configure.sh" ]; then
+  bash "$INSTALL_DIR/configure.sh"
+fi
+
 echo ""
 echo "Installed claude-statusline."
 echo "  Location: $INSTALL_DIR"
-echo "  Icons:    $icon_mode"
-echo "  Cost:     $show_cost"
-echo "  Sonnet:   disabled (enable with /statusline-sonnet — Pro/Max only)"
+if [ "$setup_mode" != "advanced" ]; then
+  echo "  Icons:    $icon_mode"
+  echo "  Cost:     $show_cost"
+fi
 echo ""
 echo "Restart Claude Code to see the status bar."
-echo "Use /statusline-update to get future updates."
+echo "Reconfigure anytime with /statusline-config; update with /statusline-update."

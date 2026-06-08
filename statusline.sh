@@ -26,6 +26,7 @@ SHOW_CWD="false"
 SHOW_EXTRA_USAGE="false"
 SHOW_FAST_MODE="true"
 SHOW_CONTEXT_WARNING="true"
+CONTEXT_WARNING_TOKENS="200000"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
@@ -135,7 +136,8 @@ eval "$(echo "$input" | jq -r '
   @sh "session_id=\(.session_id // .sessionId // "")",
   @sh "cc_version=\(.version // "")",
   @sh "fast_mode=\(.fast_mode // false)",
-  @sh "exceeds_200k=\(.exceeds_200k_tokens // false)"
+  @sh "exceeds_200k=\(.exceeds_200k_tokens // false)",
+  @sh "ctx_tokens=\(.context_window.total_input_tokens // "")"
 ' 2>/dev/null)" 2>/dev/null || true
 
 # --- context progress bar ---
@@ -735,11 +737,32 @@ if [ "$SHOW_FAST_MODE" = "true" ] && [ "$fast_mode" = "true" ]; then
   fast_seg="${CLR_YELLOW}${ICON_FAST} fast${CLR_RESET}"
 fi
 
-# Over-200k context warning: appears once the session crosses the 200k-token
-# threshold (the long-context pricing tier). Hidden below the threshold.
+# Humanize a token count for the warning label: 200000 → 200k, 1500000 → 1.5M.
+humanize_tokens() {
+  local n=$1
+  if [ "$n" -ge 1000000 ] 2>/dev/null; then
+    local whole=$(( n / 1000000 )) frac=$(( (n % 1000000) / 100000 ))
+    if [ "$frac" -eq 0 ]; then printf "%dM" "$whole"; else printf "%d.%dM" "$whole" "$frac"; fi
+  elif [ "$n" -ge 1000 ] 2>/dev/null; then
+    printf "%dk" "$(( n / 1000 ))"
+  else
+    printf "%d" "$n"
+  fi
+}
+
+# Context warning: fires when the context occupies at least CONTEXT_WARNING_TOKENS
+# tokens (default 200000 — the long-context pricing tier). The label is derived
+# from the threshold (>200k, >1.5M). Falls back to Claude Code's
+# exceeds_200k_tokens boolean when total_input_tokens isn't provided.
 ctx_warn_seg=""
-if [ "$SHOW_CONTEXT_WARNING" = "true" ] && [ "$exceeds_200k" = "true" ]; then
-  ctx_warn_seg="${CLR_RED}${ICON_WARN} >200k${CLR_RESET}"
+if [ "$SHOW_CONTEXT_WARNING" = "true" ]; then
+  warn_threshold=${CONTEXT_WARNING_TOKENS%%.*}
+  case "$warn_threshold" in ''|*[!0-9]*) warn_threshold=200000 ;; esac
+  if [ -n "$ctx_tokens" ] && [ "${ctx_tokens%%.*}" -ge "$warn_threshold" ] 2>/dev/null; then
+    ctx_warn_seg="${CLR_RED}${ICON_WARN} >$(humanize_tokens "$warn_threshold")${CLR_RESET}"
+  elif [ -z "$ctx_tokens" ] && [ "$exceeds_200k" = "true" ]; then
+    ctx_warn_seg="${CLR_RED}${ICON_WARN} >200k${CLR_RESET}"
+  fi
 fi
 
 # --- divider ---

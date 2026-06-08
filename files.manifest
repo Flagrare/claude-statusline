@@ -11,6 +11,7 @@ dat VERSION
 bin statusline.sh
 bin usage-poller.sh
 bin version-check.sh
+bin configure.sh
 bin switch-icons.sh
 bin switch-cost.sh
 bin switch-sonnet.sh
@@ -31,6 +32,7 @@ bin switch-context-warning.sh
 
 cmd .claude/commands/statusline-update.md
 cmd .claude/commands/statusline-version.md
+cmd .claude/commands/statusline-config.md
 cmd .claude/commands/statusline-icons.md
 cmd .claude/commands/statusline-cost.md
 cmd .claude/commands/statusline-sonnet.md
