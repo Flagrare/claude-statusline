@@ -720,9 +720,11 @@ if [ "$SHOW_VERSION" = "true" ] && [ -n "$cc_version" ]; then
   version_seg="${CLR_DIM}v${cc_version}${CLR_RESET}"
 fi
 
-# CWD abbreviation: only renders when git_info is empty (no repo to display)
+# CWD abbreviation: rendered alongside git_info on row 1 so the working
+# directory stays visible even inside a repo (path adds context the repo
+# segment alone doesn't, especially in deep subdirs).
 cwd_seg=""
-if [ "$SHOW_CWD" = "true" ] && [ -z "$git_info" ] && [ -n "$cwd" ]; then
+if [ "$SHOW_CWD" = "true" ] && [ -n "$cwd" ]; then
   cwd_seg="${ICON_GIT} ${CLR_DIM}$(cwd_abbrev_segment "$cwd")${CLR_RESET}"
 fi
 
@@ -821,16 +823,16 @@ wrap_segs() {
 }
 
 # --- assemble (flush-left rows, wrapped at terminal width) ---
-# Row 1 carries the original core: identity, git, usage gauges, context.
+# Row 1 carries the original core: identity, git+cwd, usage gauges, context.
 # Row 2 carries later, optional/toggleable additions: live speed, session meta
-# (cwd, output-style, session-id, version), and budget. Each row is packed into
+# (output-style, session-id, version), and budget. Each row is packed into
 # as many physical lines as its width needs (no truncation). Row 2 is suppressed
 # entirely when none of its segments are enabled.
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$ctx_seg" "$ctx_warn_seg")
-row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$cwd_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
+row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$ctx_seg" "$ctx_warn_seg")
+row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then
   printf "%s\n%s" "$row1" "$row2"
