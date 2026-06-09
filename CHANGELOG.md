@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.10.0 — 2026-06-09
+
+The statusline now surfaces three signals from the session transcript itself: an active `/goal`, an active `/loop`, and the humanized session title.
+
+### New Features
+
+- **`/statusline-goal`**: while a [`/goal`](https://code.claude.com/docs/en/goal) is running, the active condition appears on row 1 (`🎯 all tests in test/auth pass…`). Suppresses entirely the moment the evaluator confirms it met. On by default; the segment is silent unless you've actually set a goal.
+- **`/statusline-loop`**: while a [`/loop`](https://code.claude.com/docs/en/scheduled-tasks#run-a-prompt-repeatedly-with-%2Floop) cron is active, the schedule appears on row 1 (`🔁 Every 10 minutes`, or `🔁 N loops` when multiple). Tracks the lifecycle by pairing `CronCreate` events tagged `attributionSkill:loop` against any matching `CronDelete`. On by default; silent unless a loop is scheduled.
+- **`/statusline-ai-title`**: opt-in segment on row 2 carrying the auto-generated humanized session name (`📝 Statusline not showing current folder`), the same one Claude Code shows in the resume picker. Truncates at `AI_TITLE_MAX_CHARS` (default `40`).
+
+### Behaviour
+
+- `parse_jsonl_signals` now emits all transcript-derived signals in a single awk pass over the existing `head -1 + tail -200` window, switched from `eval`-style assignments to TAB-separated `KEY<TAB>VALUE` output so arbitrary string content (goal conditions, AI titles) passes through without shell-quoting trouble.
+
+---
+
 ## v2.9.0 — 2026-06-09
 
 CWD now lives on row 1, next to the repo segment, so deep subdir context is always visible.
