@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.9.0 — 2026-06-09
+
+CWD now lives on row 1, next to the repo segment, so deep subdir context is always visible.
+
+### Layout
+
+- **CWD segment**: rendered on row 1 alongside the repo segment, regardless of whether you're inside a git repo. Previously it was hidden inside any repo and otherwise dropped to row 2. The fish-style abbreviation is unchanged (`~/D/c/claude-statusline`).
+- **Row 2**: token speed, session duration, output style, session ID, version, extra usage, cost. CWD has moved out, and row 2 still suppresses entirely when nothing on it is enabled.
+
+---
+
 ## v2.8.0 — 2026-06-08
 
 Pick exactly the segments you want — at install or any time after — and warn at whatever context size you choose.
