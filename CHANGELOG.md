@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.11.0 — 2026-06-09
+
+`/statusline-config` now uses real checkboxes when [`gum`](https://github.com/charmbracelet/gum) is installed. Arrow keys to navigate, space to toggle, enter to save.
+
+### Behaviour
+
+- **`/statusline-config`**: arrow-key checkbox UI when gum is on `$PATH`; the current config seeds the screen so you see exactly what's enabled before you change anything. First run on a system without gum offers to install it via `brew`, `apt`, or `pacman`. Declining drops a sentinel so you aren't asked again, and the existing numbered checklist runs unchanged.
+
+---
+
 ## v2.10.0 — 2026-06-09
 
 The statusline now surfaces three signals from the session transcript itself: an active `/goal`, an active `/loop`, and the humanized session title.
