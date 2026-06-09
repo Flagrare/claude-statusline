@@ -31,7 +31,7 @@ Emoji mode:
 | Output style | **Opt-in** — dim `style:explanatory` / `style:learning` label on the second row. Enable with `/statusline-output-style`. |
 | Session ID | **Opt-in** — id-tagged 6-char prefix of the session UUID (`🆔 a1b2c3`). Enable with `/statusline-session-id`. |
 | Claude Code version | **Opt-in** — trailing `vX.Y.Z` (the host app's version). Enable with `/statusline-claude-version`. |
-| CWD (outside git) | **Opt-in** — fish-style abbreviated path (`~/D/c/claude-statusline`) when you're outside any git repo. Inside a repo the existing repo name covers it. Enable with `/statusline-cwd`. |
+| CWD | **Opt-in** — fish-style abbreviated path (`~/D/c/claude-statusline`) on row 1, alongside the repo segment. Surfaces deep-subdir context the repo basename alone misses, and still shows the path when you're outside a repo. Enable with `/statusline-cwd`. |
 | Extra usage | **Opt-in** — pay-as-you-go overage spend (`+$12.50 (25%)`) when enabled on your account. Auto-hides otherwise. Enable with `/statusline-extra-usage`. |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
 | Sonnet / Opus weekly | **Opt-in** per-model weekly cap, separate from the combined 7-day limit. Anthropic enforces a Sonnet-specific weekly limit on Pro/Max plans (and Opus too on Max). Enable with `/statusline-sonnet` — see [Per-model usage](#per-model-usage-opt-in) below. |
@@ -46,8 +46,8 @@ Emoji mode:
 
 The statusline renders as up to two rows, split by importance rather than by alignment:
 
-- **Row 1 — the core.** Model, thinking effort, fast-mode badge, git repo/branch, the 5h / 7d / per-model rate limits, the context bar (with compaction counter), and the >200k warning. Everything you almost always want.
-- **Row 2 — the extras.** Token speed, session duration, CWD, output style, session ID, version, extra usage, session cost. Each is opt-in, and the whole row is suppressed when none are enabled — so a lean config is a single line with no trailing blank.
+- **Row 1 — the core.** Model, thinking effort, fast-mode badge, git repo/branch, CWD (opt-in, sits beside the repo segment), the 5h / 7d / per-model rate limits, the context bar (with compaction counter), and the >200k warning. Everything you almost always want.
+- **Row 2 — the extras.** Token speed, session duration, output style, session ID, version, extra usage, session cost. Each is opt-in, and the whole row is suppressed when none are enabled — so a lean config is a single line with no trailing blank.
 
 Within a row, segments are a continuous group separated by ` │ ` and rendered flush-left. There's no left/right spread: the first segment starts at column zero and the rest follow.
 
@@ -189,7 +189,7 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-output-style` | Toggles the `style:…` label on the second row. Off by default. |
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
-| `/statusline-cwd` | Toggles the fish-style abbreviated path (shown only when outside any git repo). Off by default. |
+| `/statusline-cwd` | Toggles the fish-style abbreviated path on row 1, alongside the repo segment. Off by default. |
 | `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |
 | `/statusline-version` | Prints the installed claude-statusline version and checks GitHub for a newer one. |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |

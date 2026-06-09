@@ -25,7 +25,7 @@ else
 fi
 
 if [ "$target" = "true" ]; then
-  echo "CWD display: on (fish-style abbreviated path when you're outside any git repo)"
+  echo "CWD display: on (fish-style abbreviated path on row 1, alongside the repo segment)"
 else
   echo "CWD display: off"
 fi
