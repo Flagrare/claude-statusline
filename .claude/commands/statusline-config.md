@@ -1,5 +1,7 @@
 Open the interactive claude-statusline configurator — pick an icon mode and tick the features you want, all in one screen. Same checklist the Advanced installer uses. The per-feature commands (`/statusline-pr`, `/statusline-cost`, …) stay for quick single flips; this is the "show me everything" view.
 
+**UI:** when [`gum`](https://github.com/charmbracelet/gum) is installed, the configurator uses arrow-key navigation and space-to-toggle checkboxes. First run offers to install gum via your package manager (`brew`, `apt`, or `pacman`); declining drops to a numbered checklist that works anywhere — your choice persists.
+
 **Important:** this configurator is **interactive** — it reads keyboard input to let the user tick boxes. It therefore must run in the user's own terminal, not through a captured Bash call (which has no TTY and would read EOF, saving no changes).
 
 So do NOT run it yourself via a normal Bash tool call. Instead, tell the user to run it directly in their session:

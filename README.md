@@ -188,7 +188,7 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-conflicts` | Toggles the `!N` red marker for unresolved merge conflicts. **On by default.** |
 | `/statusline-fast-mode` | Toggles the `⚡ fast` badge shown while Fast mode is active. **On by default**; auto-hides when Fast mode is off. |
 | `/statusline-context-warning` | Toggles the context-warning badge, or sets its token threshold: `on`/`off`, or a count like `150000` / `150k` / `2m`. Default on at `200000`. |
-| `/statusline-config` | Opens the interactive configurator (icon mode + every feature in one checklist). Run it in your own terminal — it's interactive. |
+| `/statusline-config` | Opens the interactive configurator (icon mode + every feature in one checklist). Uses [`gum`](https://github.com/charmbracelet/gum) for arrow-key checkboxes when installed; falls back to a numbered checklist otherwise. Run it in your own terminal — it's interactive. |
 | `/statusline-output-style` | Toggles the `style:…` label on the second row. Off by default. |
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
