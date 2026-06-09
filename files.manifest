@@ -29,6 +29,9 @@ bin switch-cwd.sh
 bin switch-extra-usage.sh
 bin switch-fast-mode.sh
 bin switch-context-warning.sh
+bin switch-ai-title.sh
+bin switch-goal.sh
+bin switch-loop.sh
 
 cmd .claude/commands/statusline-update.md
 cmd .claude/commands/statusline-version.md
@@ -50,3 +53,6 @@ cmd .claude/commands/statusline-cwd.md
 cmd .claude/commands/statusline-extra-usage.md
 cmd .claude/commands/statusline-fast-mode.md
 cmd .claude/commands/statusline-context-warning.md
+cmd .claude/commands/statusline-ai-title.md
+cmd .claude/commands/statusline-goal.md
+cmd .claude/commands/statusline-loop.md

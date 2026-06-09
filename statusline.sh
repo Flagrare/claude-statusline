@@ -27,6 +27,10 @@ SHOW_EXTRA_USAGE="false"
 SHOW_FAST_MODE="true"
 SHOW_CONTEXT_WARNING="true"
 CONTEXT_WARNING_TOKENS="200000"
+SHOW_AI_TITLE="false"
+SHOW_GOAL="true"
+SHOW_LOOP="true"
+AI_TITLE_MAX_CHARS="40"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
@@ -68,6 +72,9 @@ case "$ICONS" in
     ICON_ID=$'\xef\x8b\x82'           # nf-fa-id_card         (U+F2C2)
     ICON_FAST=$'\xef\x83\xa7'         # nf-fa-bolt            (U+F0E7)
     ICON_WARN=$'\xef\x81\xb1'         # nf-fa-warning         (U+F071)
+    ICON_GOAL=$'\xef\x85\x80'         # nf-fa-bullseye        (U+F140)
+    ICON_LOOP=$'\xef\x80\xa1'         # nf-fa-refresh         (U+F021)
+    ICON_TITLE=$'\xef\x85\x9c'        # nf-fa-comment_o       (U+F0E5)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -85,6 +92,9 @@ case "$ICONS" in
     ICON_ID="#"       # U+0023 NUMBER SIGN              — identifier
     ICON_FAST="»"     # U+00BB RIGHT GUILLEMET          — fast-forward
     ICON_WARN="△"     # U+25B3 WHITE UP-POINTING TRIANGLE — caution
+    ICON_GOAL="◎"     # U+25CE BULLSEYE                 — Claude Code's own /goal indicator
+    ICON_LOOP="↻"     # U+21BB CLOCKWISE OPEN CIRCLE ARROW — recurring schedule
+    ICON_TITLE="❝"    # U+275D HEAVY DOUBLE TURNED COMMA — quoted label
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -102,6 +112,9 @@ case "$ICONS" in
     ICON_ID="[id]"
     ICON_FAST=">>"
     ICON_WARN="!"
+    ICON_GOAL="[goal]"
+    ICON_LOOP="[loop]"
+    ICON_TITLE="[t]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -119,6 +132,9 @@ case "$ICONS" in
     ICON_ID="🆔"
     ICON_FAST="⚡"
     ICON_WARN="⚠️"
+    ICON_GOAL="🎯"
+    ICON_LOOP="🔁"
+    ICON_TITLE="📝"
     ;;
 esac
 
@@ -304,8 +320,9 @@ discover_session_file() {
 }
 
 # Single-pass parser: head -1 (session start) + tail -N (recent turns) bounds
-# the scan so growing transcripts don't slow renders. Emits eval-safe shell
-# assignments for first/last user/assistant timestamps and last-turn tokens.
+# the scan so growing transcripts don't slow renders. Emits TAB-separated
+# KEY<TAB>VALUE lines so values containing arbitrary characters (goal
+# conditions, AI titles) can be read safely without shell quoting gymnastics.
 parse_jsonl_signals() {
   local file=$1
   [ -f "$file" ] || return
@@ -315,6 +332,18 @@ parse_jsonl_signals() {
       if (!i) return ""
       rest = substr(line, i + length(key) + 4)
       return substr(rest, 1, index(rest, "\"") - 1)
+    }
+    # Extract the next "..."-quoted value that appears immediately after a
+    # literal anchor substring. Used when a key like "id" is ambiguous (e.g.
+    # the message id and the tool_use id both share that key on the same line)
+    # but the surrounding structure is not.
+    function extract_after(line, anchor,    i, rest, j) {
+      i = index(line, anchor)
+      if (!i) return ""
+      rest = substr(line, i + length(anchor))
+      j = index(rest, "\"")
+      if (!j) return ""
+      return substr(rest, 1, j - 1)
     }
     function extract_num(line, key,    i, rest) {
       i = index(line, "\"" key "\"")
@@ -334,14 +363,74 @@ parse_jsonl_signals() {
               + extract_num($0, "cache_read_input_tokens")
       last_out = extract_num($0, "output_tokens")
     }
+    # AI-generated session title. Multiple records get written as Claude
+    # re-titles; last one wins.
+    /"type":"ai-title"/ { ai_title = extract_str($0, "aiTitle") }
+    # /goal evaluator emits an attachment after every turn while a goal is
+    # active, plus one final met:true when the condition is satisfied. Last
+    # one wins; segment renders only when the latest is met:false.
+    /"type":"goal_status"/ {
+      goal_condition = extract_str($0, "condition")
+      if (index($0, "\"met\":true"))       goal_met = "true"
+      else if (index($0, "\"met\":false")) goal_met = "false"
+    }
+    # /loop creates a CronCreate tool_use tagged attributionSkill:"loop".
+    # The tool_result on the next event carries the 8-char cron id +
+    # humanSchedule. CronDelete removes it. Active loops = created - deleted.
+    /"name":"CronCreate"/ && /"attributionSkill":"loop"/ {
+      pending_cc_tuid = extract_after($0, "\"type\":\"tool_use\",\"id\":\"")
+    }
+    /"toolUseResult":\{"id":"/ {
+      cid  = extract_after($0, "\"toolUseResult\":{\"id\":\"")
+      tuid = extract_str($0, "tool_use_id")
+      if (cid != "" && tuid != "" && tuid == pending_cc_tuid) {
+        cron_active[cid] = extract_str($0, "humanSchedule")
+        pending_cc_tuid = ""
+      }
+    }
+    /"name":"CronDelete"/ {
+      did = extract_after($0, "\"input\":{\"id\":\"")
+      if (did != "") delete cron_active[did]
+    }
     END {
-      printf "JSONL_FIRST_TS=%s\n",    first_ts
-      printf "JSONL_LAST_USER_TS=%s\n", last_user_ts
-      printf "JSONL_LAST_ASST_TS=%s\n", last_asst_ts
-      printf "JSONL_LAST_IN=%d\n",      last_in
-      printf "JSONL_LAST_OUT=%d\n",     last_out
+      printf "FIRST_TS\t%s\n",     first_ts
+      printf "LAST_USER_TS\t%s\n", last_user_ts
+      printf "LAST_ASST_TS\t%s\n", last_asst_ts
+      printf "LAST_IN\t%d\n",      last_in
+      printf "LAST_OUT\t%d\n",     last_out
+      printf "AI_TITLE\t%s\n",     ai_title
+      printf "GOAL_MET\t%s\n",     goal_met
+      printf "GOAL_CONDITION\t%s\n", goal_condition
+      cnt = 0; first_sched = ""
+      for (c in cron_active) {
+        cnt++
+        if (first_sched == "") first_sched = cron_active[c]
+      }
+      printf "LOOP_COUNT\t%d\n",   cnt
+      printf "LOOP_FIRST_SCHEDULE\t%s\n", first_sched
     }
   '
+}
+
+# Read parse_jsonl_signals output into JSONL_* shell vars. Tab-separated so
+# arbitrary string values pass through unchanged.
+load_jsonl_signals() {
+  local file=$1 key val
+  [ -f "$file" ] || return
+  while IFS=$'\t' read -r key val; do
+    case "$key" in
+      FIRST_TS)            JSONL_FIRST_TS=$val ;;
+      LAST_USER_TS)        JSONL_LAST_USER_TS=$val ;;
+      LAST_ASST_TS)        JSONL_LAST_ASST_TS=$val ;;
+      LAST_IN)             JSONL_LAST_IN=$val ;;
+      LAST_OUT)            JSONL_LAST_OUT=$val ;;
+      AI_TITLE)            JSONL_AI_TITLE=$val ;;
+      GOAL_MET)            JSONL_GOAL_MET=$val ;;
+      GOAL_CONDITION)      JSONL_GOAL_CONDITION=$val ;;
+      LOOP_COUNT)          JSONL_LOOP_COUNT=$val ;;
+      LOOP_FIRST_SCHEDULE) JSONL_LOOP_FIRST_SCHEDULE=$val ;;
+    esac
+  done < <(parse_jsonl_signals "$file")
 }
 
 # Session duration: from first JSONL entry to now. Reuses format_countdown.
@@ -682,16 +771,22 @@ if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null && [ -d "$HOME/.claud
   fi
 fi
 
-# --- session JSONL signals (opt-in: session duration, token speed, compaction) ---
+# --- session JSONL signals (opt-in: session duration, token speed, compaction,
+# AI title, /goal indicator, /loop indicator) ---
 session_dur_seg=""
 token_speed_seg=""
 compaction_seg=""
-if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || [ "$SHOW_COMPACTION" = "true" ]; then
+ai_title_seg=""
+goal_seg=""
+loop_seg=""
+if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || [ "$SHOW_COMPACTION" = "true" ] \
+   || [ "$SHOW_AI_TITLE" = "true" ] || [ "$SHOW_GOAL" = "true" ] || [ "$SHOW_LOOP" = "true" ]; then
   jsonl_file=$(discover_session_file "${cwd:-$PWD}")
   if [ -f "$jsonl_file" ]; then
     # Bounded read: head -1 + tail -200 — first line carries session start,
-    # last 200 lines cover the most recent turns for token-speed pairing.
-    eval "$(parse_jsonl_signals "$jsonl_file" 2>/dev/null)" 2>/dev/null || true
+    # last 200 lines cover the most recent turns for token-speed pairing,
+    # last ai-title, latest goal_status, and currently-active CronCreate IDs.
+    load_jsonl_signals "$jsonl_file"
     if [ "$SHOW_SESSION_DURATION" = "true" ]; then
       session_dur_seg=$(session_duration_segment "$JSONL_FIRST_TS")
     fi
@@ -700,6 +795,34 @@ if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || 
     fi
     if [ "$SHOW_COMPACTION" = "true" ]; then
       compaction_seg=$(compaction_segment "$used_pct_raw" "$(basename "$jsonl_file" .jsonl)")
+    fi
+    if [ "$SHOW_AI_TITLE" = "true" ] && [ -n "$JSONL_AI_TITLE" ]; then
+      max=${AI_TITLE_MAX_CHARS%%.*}
+      case "$max" in ''|*[!0-9]*|0) max=40 ;; esac
+      title=$JSONL_AI_TITLE
+      if [ ${#title} -gt "$max" ]; then
+        title="${title:0:$((max-1))}…"
+      fi
+      ai_title_seg="${ICON_TITLE} ${CLR_DIM}${title}${CLR_RESET}"
+    fi
+    # Goal: render only when /goal is active (latest goal_status has met:false).
+    # met:true means the evaluator just confirmed completion and the goal
+    # cleared, so suppress.
+    if [ "$SHOW_GOAL" = "true" ] && [ "$JSONL_GOAL_MET" = "false" ] && [ -n "$JSONL_GOAL_CONDITION" ]; then
+      goal_text=$JSONL_GOAL_CONDITION
+      if [ ${#goal_text} -gt 50 ]; then
+        goal_text="${goal_text:0:49}…"
+      fi
+      goal_seg="${CLR_CYAN}${ICON_GOAL}${CLR_RESET} ${CLR_DIM}${goal_text}${CLR_RESET}"
+    fi
+    # Loop: count of active /loop-attributed crons (CronCreate minus
+    # CronDelete). Single loop renders its schedule; multiple just the count.
+    if [ "$SHOW_LOOP" = "true" ] && [ -n "$JSONL_LOOP_COUNT" ] && [ "$JSONL_LOOP_COUNT" -gt 0 ] 2>/dev/null; then
+      if [ "$JSONL_LOOP_COUNT" -eq 1 ] && [ -n "$JSONL_LOOP_FIRST_SCHEDULE" ]; then
+        loop_seg="${CLR_BLUE}${ICON_LOOP}${CLR_RESET} ${CLR_DIM}${JSONL_LOOP_FIRST_SCHEDULE}${CLR_RESET}"
+      else
+        loop_seg="${CLR_BLUE}${ICON_LOOP}${CLR_RESET} ${CLR_DIM}${JSONL_LOOP_COUNT} loops${CLR_RESET}"
+      fi
     fi
   fi
 fi
@@ -779,7 +902,7 @@ disp_width() {
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -823,16 +946,17 @@ wrap_segs() {
 }
 
 # --- assemble (flush-left rows, wrapped at terminal width) ---
-# Row 1 carries the original core: identity, git+cwd, usage gauges, context.
-# Row 2 carries later, optional/toggleable additions: live speed, session meta
-# (output-style, session-id, version), and budget. Each row is packed into
-# as many physical lines as its width needs (no truncation). Row 2 is suppressed
-# entirely when none of its segments are enabled.
+# Row 1 carries the original core: identity, git+cwd, usage gauges, context,
+# plus high-signal workflow markers (goal, loop) that suppress when inactive.
+# Row 2 carries later, optional/toggleable additions: live speed, AI title,
+# session meta (output-style, session-id, version), and budget. Each row is
+# packed into as many physical lines as its width needs (no truncation).
+# Row 2 is suppressed entirely when none of its segments are enabled.
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$ctx_seg" "$ctx_warn_seg")
-row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
+row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$ctx_seg" "$ctx_warn_seg")
+row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then
   printf "%s\n%s" "$row1" "$row2"

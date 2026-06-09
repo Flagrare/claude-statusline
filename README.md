@@ -41,13 +41,16 @@ Emoji mode:
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
 | ⚠ context warning | A red `⚠ >Nk` badge once the context reaches `CONTEXT_WARNING_TOKENS` (default `200000` — the long-context pricing line). The label tracks the threshold (`>200k`, `>150k`, `>1.5M`). **On by default** — set the threshold with `/statusline-context-warning 150k`, toggle with `/statusline-context-warning off`. |
 | 🔄 Compaction counter | **Opt-in** — appears next to the context bar after one or more auto-compactions in the current session. Enable with `/statusline-compaction` |
+| 🎯 /goal indicator | **On by default** — renders the active condition on row 1 while a [`/goal`](https://code.claude.com/docs/en/goal) is running (`🎯 all tests in test/auth pass…`). Suppresses entirely when no goal is active or the evaluator just confirmed it met. Toggle with `/statusline-goal`. |
+| 🔁 /loop indicator | **On by default** — renders schedule on row 1 while a [`/loop`](https://code.claude.com/docs/en/scheduled-tasks#run-a-prompt-repeatedly-with-%2Floop) cron is active (`🔁 Every 10 minutes`, or `🔁 N loops` when multiple). Suppresses when none scheduled. Toggle with `/statusline-loop`. |
+| 📝 AI session title | **Opt-in** — the auto-generated humanized session name (e.g. `📝 Statusline not showing current folder`) on row 2. Useful when juggling multiple terminal tabs. Truncates at `AI_TITLE_MAX_CHARS` (default 40). Enable with `/statusline-ai-title`. |
 
 ## Layout & width
 
 The statusline renders as up to two rows, split by importance rather than by alignment:
 
-- **Row 1 — the core.** Model, thinking effort, fast-mode badge, git repo/branch, CWD (opt-in, sits beside the repo segment), the 5h / 7d / per-model rate limits, the context bar (with compaction counter), and the >200k warning. Everything you almost always want.
-- **Row 2 — the extras.** Token speed, session duration, output style, session ID, version, extra usage, session cost. Each is opt-in, and the whole row is suppressed when none are enabled — so a lean config is a single line with no trailing blank.
+- **Row 1 — the core.** Model, thinking effort, fast-mode badge, git repo/branch, CWD (opt-in, sits beside the repo segment), goal/loop indicators when active, the 5h / 7d / per-model rate limits, the context bar (with compaction counter), and the >200k warning. Everything you almost always want.
+- **Row 2 — the extras.** Token speed, session duration, AI session title, output style, session ID, version, extra usage, session cost. Each is opt-in, and the whole row is suppressed when none are enabled — so a lean config is a single line with no trailing blank.
 
 Within a row, segments are a continuous group separated by ` │ ` and rendered flush-left. There's no left/right spread: the first segment starts at column zero and the rest follow.
 
@@ -191,6 +194,9 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
 | `/statusline-cwd` | Toggles the fish-style abbreviated path on row 1, alongside the repo segment. Off by default. |
 | `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |
+| `/statusline-goal` | Toggles the `/goal` indicator on row 1. **On by default**; segment is silent unless a goal is active. |
+| `/statusline-loop` | Toggles the `/loop` indicator on row 1. **On by default**; segment is silent unless a loop is scheduled. |
+| `/statusline-ai-title` | Toggles the AI-generated session title on row 2. Off by default. |
 | `/statusline-version` | Prints the installed claude-statusline version and checks GitHub for a newer one. |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 

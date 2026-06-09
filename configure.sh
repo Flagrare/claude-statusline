@@ -12,15 +12,18 @@ CONF="$SCRIPT_DIR/.statusline.conf"
 keys=(  SHOW_GIT_DIFF_STATS SHOW_PR SHOW_WORKTREE SHOW_CONFLICTS \
         SHOW_SONNET_LIMIT SHOW_OUTPUT_STYLE SHOW_SESSION_ID SHOW_VERSION \
         SHOW_CWD SHOW_SESSION_DURATION SHOW_TOKEN_SPEED SHOW_COMPACTION \
-        SHOW_EXTRA_USAGE SHOW_COST SHOW_FAST_MODE SHOW_CONTEXT_WARNING )
+        SHOW_EXTRA_USAGE SHOW_COST SHOW_FAST_MODE SHOW_CONTEXT_WARNING \
+        SHOW_AI_TITLE SHOW_GOAL SHOW_LOOP )
 labels=("Git diff stats (+N -N)" "PR link" "Worktree marker" "Merge-conflicts marker" \
         "Per-model weekly usage (Sonnet/Opus)" "Output-style label" "Session ID" "Claude Code version badge" \
         "CWD path" "Session duration" "Token speed" "Compaction counter" \
-        "Extra usage (overage)" "Session cost" "Fast-mode badge" "Context warning" )
+        "Extra usage (overage)" "Session cost" "Fast-mode badge" "Context warning" \
+        "AI session title" "/goal indicator" "/loop indicator" )
 defs=(  false false true true \
         false false false false \
         false false false false \
-        false false true true )
+        false false true true \
+        false true true )
 
 conf_val() { grep "^$1=" "$CONF" 2>/dev/null | tail -1 | cut -d= -f2; }
 
