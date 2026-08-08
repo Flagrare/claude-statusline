@@ -531,24 +531,29 @@ pr_link_segment() {
   fi
   if [ "$fresh" != "true" ]; then
     ( cd "$target" 2>/dev/null && \
-      gh pr view --json url,state,number 2>/dev/null > "${cache_file}.tmp" && \
+      gh pr view --json url,state,number,isDraft 2>/dev/null > "${cache_file}.tmp" && \
       mv "${cache_file}.tmp" "$cache_file" ) >/dev/null 2>&1 &
     disown 2>/dev/null || true
   fi
 
   [ -f "$cache_file" ] || return
-  local url state number
-  eval "$(jq -r '@sh "url=\(.url // "") state=\(.state // "") number=\(.number // "")"' "$cache_file" 2>/dev/null)" 2>/dev/null || return
+  local url state number is_draft
+  eval "$(jq -r '@sh "url=\(.url // "") state=\(.state // "") number=\(.number // "") is_draft=\(.isDraft // false)"' "$cache_file" 2>/dev/null)" 2>/dev/null || return
   [ -z "$number" ] && return
 
+  # A draft PR reports state OPEN with isDraft true — GitHub never returns a
+  # DRAFT state — so the draft check has to come before the state switch.
   local color
-  case "$state" in
-    OPEN)   color="$CLR_GREEN" ;;
-    DRAFT)  color="$CLR_GRAY"  ;;
-    MERGED) color="$CLR_CYAN"  ;;
-    CLOSED) color="$CLR_RED"   ;;
-    *)      color="$CLR_GRAY"  ;;
-  esac
+  if [ "$is_draft" = "true" ]; then
+    color="$CLR_GRAY"
+  else
+    case "$state" in
+      OPEN)   color="$CLR_GREEN" ;;
+      MERGED) color="$CLR_CYAN"  ;;
+      CLOSED) color="$CLR_RED"   ;;
+      *)      color="$CLR_GRAY"  ;;
+    esac
+  fi
   # OSC8 hyperlink: ESC ] 8 ; ; URL BEL  TEXT  ESC ] 8 ; ; BEL
   # Whole "PR#<n>" label is the clickable link text.
   printf "  %s\033]8;;%s\007PR#%s\033]8;;\007%s" "$color" "$url" "$number" "$CLR_RESET"
