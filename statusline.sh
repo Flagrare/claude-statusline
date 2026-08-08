@@ -35,6 +35,11 @@ if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
 
+# Active Claude Code config dir. Honouring CLAUDE_CONFIG_DIR lets a second
+# profile (a separate account, say) read its own transcripts and caches
+# instead of the default profile's.
+CC_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+
 # ANSI color constants (actual escape chars via $'...' quoting)
 CLR_GREEN=$'\033[32m'
 CLR_YELLOW=$'\033[33m'
@@ -312,10 +317,10 @@ iso_to_epoch() {
 discover_session_file() {
   local target_cwd=$1
   [ -z "$target_cwd" ] && return
-  [ ! -d "$HOME/.claude/projects" ] && return
+  [ ! -d "$CC_DIR/projects" ] && return
   local key dir
   key=$(printf "%s" "$target_cwd" | sed 's|[^a-zA-Z0-9-]|-|g')
-  dir="$HOME/.claude/projects/${key}"
+  dir="$CC_DIR/projects/${key}"
   ls -t "${dir}"/*.jsonl 2>/dev/null | head -1
 }
 
@@ -468,7 +473,7 @@ token_speed_segment() {
 compaction_segment() {
   local current_pct=$1 session_id=$2
   [ -z "$current_pct" ] || [ -z "$session_id" ] && return
-  local state_dir="$HOME/.claude/.statusline-state"
+  local state_dir="$CC_DIR/.statusline-state"
   mkdir -p "$state_dir" 2>/dev/null || return
   local state_file="$state_dir/compaction-${session_id}.json"
   local last_pct=0 count=0
@@ -515,7 +520,7 @@ pr_link_segment() {
   local target=$1 branch=$2
   command -v gh >/dev/null 2>&1 || return
   [ -z "$branch" ] && return
-  local state_dir="$HOME/.claude/.statusline-state"
+  local state_dir="$CC_DIR/.statusline-state"
   mkdir -p "$state_dir" 2>/dev/null || return
   # Sanitize branch (may contain `/`) and combine with repo basename for a unique key.
   local repo_base safe_branch cache_file
@@ -593,7 +598,7 @@ cwd_abbrev_segment() {
 # when extra_usage is enabled AND has a utilization number. Format:
 # "+$<credits> (<util>%)" — colored by utilization via rate_color.
 extra_usage_segment() {
-  local cache="$HOME/.claude/.statusline-usage-cache.json"
+  local cache="$CC_DIR/.statusline-usage-cache.json"
   [ -f "$cache" ] || return
   local enabled util credits cur
   eval "$(jq -r '
@@ -625,7 +630,7 @@ week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long"
 sonnet_limit=""
 opus_limit=""
 if [ "$SHOW_SONNET_LIMIT" = "true" ]; then
-  CACHE_FILE="$HOME/.claude/.statusline-usage-cache.json"
+  CACHE_FILE="$CC_DIR/.statusline-usage-cache.json"
   POLLER="$SCRIPT_DIR/usage-poller.sh"
 
   # Refresh in background when cache is missing or stale (>5 min). The current
@@ -729,10 +734,10 @@ fi
 
 # --- session cost (opt-in: set SHOW_COST=true in .statusline.conf) ---
 cost_seg=""
-if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null && [ -d "$HOME/.claude/projects" ]; then
+if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null && [ -d "$CC_DIR/projects" ]; then
   # Derive project dir: Claude encodes cwd by replacing non-alphanumeric chars with -
   project_key=$(printf "%s" "${cwd:-$PWD}" | sed 's|[^a-zA-Z0-9-]|-|g')
-  project_dir="$HOME/.claude/projects/${project_key}"
+  project_dir="$CC_DIR/projects/${project_key}"
   session_file=$(ls -t "${project_dir}"/*.jsonl 2>/dev/null | head -1)
   if [ -f "$session_file" ]; then
     cost_seg=$(awk '

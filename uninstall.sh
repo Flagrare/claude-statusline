@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-CLAUDE_DIR="$HOME/.claude"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 INSTALL_DIR="$CLAUDE_DIR/statusline"
 COMMANDS_DIR="$CLAUDE_DIR/commands"
 SETTINGS="$CLAUDE_DIR/settings.json"
