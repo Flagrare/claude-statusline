@@ -10,7 +10,8 @@
 #
 # This is the same endpoint Claude Code's /usage command uses internally.
 
-CACHE_FILE="$HOME/.claude/.statusline-usage-cache.json"
+CC_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CACHE_FILE="$CC_DIR/.statusline-usage-cache.json"
 ENDPOINT="https://api.anthropic.com/api/oauth/usage"
 
 command -v jq &>/dev/null || exit 0
@@ -21,7 +22,7 @@ get_token() {
     security find-generic-password -s "Claude Code-credentials" -a "$USER" -w 2>/dev/null \
       | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null
   else
-    jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null
+    jq -r '.claudeAiOauth.accessToken // empty' "$CC_DIR/.credentials.json" 2>/dev/null
   fi
 }
 

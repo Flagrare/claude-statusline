@@ -200,6 +200,32 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-version` | Prints the installed claude-statusline version and checks GitHub for a newer one. |
 | `/statusline-update` | Pulls the latest version from GitHub. Re-downloads all files, preserves your config. |
 
+## Multiple Claude Code profiles
+
+Everything the statusline reads at runtime — session transcripts, the PR/state
+cache, the usage cache — resolves under `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`.
+If you run more than one account by pointing `CLAUDE_CONFIG_DIR` at separate
+config dirs, each profile sees its own data with no extra setup:
+
+```bash
+alias claude-work='CLAUDE_CONFIG_DIR="$HOME/.claude-work" claude'
+```
+
+One install serves both. Point the second profile's `settings.json` at the same
+script and it picks up the right transcripts on its own:
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "/Users/you/.claude/statusline/statusline.sh"
+}
+```
+
+`.statusline.conf` lives next to the script, so both profiles share one set of
+toggles. For independent configs, install a second copy with
+`CLAUDE_CONFIG_DIR` set — `install.sh`, `update.sh`, and `uninstall.sh` all
+honour it.
+
 ## Requirements
 
 | Dependency | Purpose | Required? |

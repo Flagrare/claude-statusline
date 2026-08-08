@@ -5,7 +5,7 @@ REPO="Flagrare/claude-statusline"
 BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
 
-CLAUDE_DIR="$HOME/.claude"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 INSTALL_DIR="$CLAUDE_DIR/statusline"
 COMMANDS_DIR="$CLAUDE_DIR/commands"
 
