@@ -1,11 +1,11 @@
 # claude-statusline
 
-You're mid-session, deep in a refactor, and Claude stops responding. Was that the rate limit? How much context is left? You scroll up trying to remember which model you're on. The built-in status bar says "claude-sonnet-4-6" and nothing else.
+You're mid-session, deep in a refactor, and Claude stops responding. Was that the rate limit? How much context is left? You scroll up trying to remember which model you're on. The built-in status bar says "claude-fable-5-1" and nothing else.
 
 This replaces it with everything you actually need to see at a glance. The essentials — model, thinking effort, git branch, rate limits, context — sit together on the top row; anything optional (session meta, live speed, cost) drops to a second row only when you enable it:
 
 ```
-claude-sonnet-4-6  │  🧠 high  │  📂 myrepo  🌿 main ~+  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
+claude-fable-5-1  │  🧠 high  │  📂 myrepo  🌿 main ~+  │  5h:42% 🔥 [1h20m]  │  7d:8% 🍃 [3d4h]  │  ctx: [████░░░░░░] 38%
 💨 142↓ 87↑/s  │  style:learning  │  🆔 a1b2c3  │  v2.6.0  │  $1.23
 ```
 
