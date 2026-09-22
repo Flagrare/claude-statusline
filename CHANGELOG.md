@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.13.0: 2026-09-22
+
+The per-model usage toggle gets a name that matches what it shows.
+
+### General
+
+- **`/statusline-sonnet` → `/statusline-model-usage`**: same segment (`📖 fable:16% 🍃 [4d23h]`), new name. `/statusline-update` moves your on/off setting across and removes the old command.
+
+### Behaviour
+
+- **Config key**: `SHOW_SONNET_LIMIT` → `SHOW_MODEL_USAGE`. Configs that still carry the old key keep working until the toggle or `/statusline-config` rewrites it.
+
+---
+
 ## v2.12.0: 2026-09-22
 
 The per-model weekly segment tracks Fable, and gets an icon of its own.
