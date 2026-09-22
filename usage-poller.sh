@@ -3,7 +3,7 @@
 # statusline.sh. Silent on every error path — a stale cache continues to serve
 # until the next successful fetch.
 #
-# Triggered in the background by statusline.sh when SHOW_SONNET_LIMIT=true and
+# Triggered in the background by statusline.sh when SHOW_MODEL_USAGE=true and
 # the cache is missing or older than the TTL (~5 min). Reads the OAuth access
 # token Claude Code itself stores: macOS keychain ("Claude Code-credentials")
 # or ~/.claude/.credentials.json on Linux.

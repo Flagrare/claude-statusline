@@ -11,7 +11,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ICONS="emoji"
 SHOW_COST="false"
-SHOW_SONNET_LIMIT="false"
+SHOW_MODEL_USAGE=""
 SHOW_SESSION_DURATION="false"
 SHOW_TOKEN_SPEED="false"
 SHOW_COMPACTION="false"
@@ -34,6 +34,8 @@ AI_TITLE_MAX_CHARS="40"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
 fi
+# Configs from before v2.13.0 carry SHOW_SONNET_LIMIT; honour it until the key is rewritten.
+[ -z "$SHOW_MODEL_USAGE" ] && SHOW_MODEL_USAGE="${SHOW_SONNET_LIMIT:-false}"
 
 # ANSI color constants (actual escape chars via $'...' quoting)
 CLR_GREEN=$'\033[32m'
@@ -627,7 +629,7 @@ week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long"
 
 # --- per-model weekly limits (opt-in; from background-polled cache) ---
 model_limit_segs=()
-if [ "$SHOW_SONNET_LIMIT" = "true" ]; then
+if [ "$SHOW_MODEL_USAGE" = "true" ]; then
   CACHE_FILE="$HOME/.claude/.statusline-usage-cache.json"
   POLLER="$SCRIPT_DIR/usage-poller.sh"
 

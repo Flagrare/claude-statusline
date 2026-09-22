@@ -33,6 +33,7 @@ fi
 rm -f "$COMMANDS_DIR/statusline-update.md"
 rm -f "$COMMANDS_DIR/statusline-icons.md"
 rm -f "$COMMANDS_DIR/statusline-cost.md"
+rm -f "$COMMANDS_DIR/statusline-model-usage.md"
 rm -f "$COMMANDS_DIR/statusline-sonnet.md"
 rm -f "$COMMANDS_DIR/statusline-session-duration.md"
 rm -f "$COMMANDS_DIR/statusline-token-speed.md"

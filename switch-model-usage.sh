@@ -2,8 +2,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF="$SCRIPT_DIR/.statusline.conf"
 
-# Read current value (default false)
-current=$(grep '^SHOW_SONNET_LIMIT=' "$CONF" 2>/dev/null | cut -d= -f2)
+# Read current value (default false; falls back to the pre-v2.13.0 key)
+current=$(grep '^SHOW_MODEL_USAGE=' "$CONF" 2>/dev/null | cut -d= -f2)
+[ -z "$current" ] && current=$(grep '^SHOW_SONNET_LIMIT=' "$CONF" 2>/dev/null | cut -d= -f2)
 [ -z "$current" ] && current="false"
 
 # Determine target
@@ -15,16 +16,17 @@ case "$arg" in
     if [ "$current" = "true" ]; then target="false"; else target="true"; fi
     ;;
   *)
-    echo "Usage: switch-sonnet.sh [true|on|false|off]"
+    echo "Usage: switch-model-usage.sh [true|on|false|off]"
     exit 1
     ;;
 esac
 
 # Write back
-if grep -q '^SHOW_SONNET_LIMIT=' "$CONF" 2>/dev/null; then
-  sed -i '' "s/^SHOW_SONNET_LIMIT=.*/SHOW_SONNET_LIMIT=${target}/" "$CONF"
+sed -i '' '/^SHOW_SONNET_LIMIT=/d' "$CONF" 2>/dev/null
+if grep -q '^SHOW_MODEL_USAGE=' "$CONF" 2>/dev/null; then
+  sed -i '' "s/^SHOW_MODEL_USAGE=.*/SHOW_MODEL_USAGE=${target}/" "$CONF"
 else
-  echo "SHOW_SONNET_LIMIT=${target}" >> "$CONF"
+  echo "SHOW_MODEL_USAGE=${target}" >> "$CONF"
 fi
 
 if [ "$target" = "true" ]; then
@@ -54,7 +56,7 @@ Per-model usage tracking: on
     Click "Always Allow" so you don't see it again.
 
   Disable anytime
-    /statusline-sonnet off
+    /statusline-model-usage off
 
   Restart Claude Code (or trigger any prompt) to see the new segment.
 MSG

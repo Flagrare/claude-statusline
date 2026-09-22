@@ -80,6 +80,20 @@ mkdir -p "$INSTALL_DIR" "$COMMANDS_DIR"
 
 fetch_from_manifest
 
+# --- v2.13.0: /statusline-sonnet became /statusline-model-usage ---
+# Carry SHOW_SONNET_LIMIT over to SHOW_MODEL_USAGE and remove the old command,
+# which would otherwise keep toggling a key nothing reads.
+CONF="$INSTALL_DIR/.statusline.conf"
+if grep -q '^SHOW_SONNET_LIMIT=' "$CONF" 2>/dev/null; then
+  if ! grep -q '^SHOW_MODEL_USAGE=' "$CONF"; then
+    grep '^SHOW_SONNET_LIMIT=' "$CONF" | tail -1 | sed 's/^SHOW_SONNET_LIMIT=/SHOW_MODEL_USAGE=/' >> "$CONF"
+  fi
+  tmp=$(mktemp)
+  { grep -v '^SHOW_SONNET_LIMIT=' "$CONF" || true; } > "$tmp"
+  mv "$tmp" "$CONF"
+fi
+rm -f "$COMMANDS_DIR/statusline-sonnet.md" "$INSTALL_DIR/switch-sonnet.sh"
+
 # --- update settings.json to point to new location ---
 if [ -f "$SETTINGS" ]; then
   current_cmd=$(jq -r '.statusLine.command // empty' "$SETTINGS" 2>/dev/null)

@@ -17,7 +17,7 @@ CONF="$SCRIPT_DIR/.statusline.conf"
 
 # Managed toggles: parallel arrays (key / label / default-when-absent).
 keys=(  SHOW_GIT_DIFF_STATS SHOW_PR SHOW_WORKTREE SHOW_CONFLICTS \
-        SHOW_SONNET_LIMIT SHOW_OUTPUT_STYLE SHOW_SESSION_ID SHOW_VERSION \
+        SHOW_MODEL_USAGE SHOW_OUTPUT_STYLE SHOW_SESSION_ID SHOW_VERSION \
         SHOW_CWD SHOW_SESSION_DURATION SHOW_TOKEN_SPEED SHOW_COMPACTION \
         SHOW_EXTRA_USAGE SHOW_COST SHOW_FAST_MODE SHOW_CONTEXT_WARNING \
         SHOW_AI_TITLE SHOW_GOAL SHOW_LOOP )
@@ -37,7 +37,9 @@ conf_val() { grep "^$1=" "$CONF" 2>/dev/null | tail -1 | cut -d= -f2; }
 # Seed state from the current config (falling back to defaults).
 state=()
 for i in "${!keys[@]}"; do
-  v=$(conf_val "${keys[$i]}"); [ -z "$v" ] && v="${defs[$i]}"
+  v=$(conf_val "${keys[$i]}")
+  [ -z "$v" ] && [ "${keys[$i]}" = SHOW_MODEL_USAGE ] && v=$(conf_val SHOW_SONNET_LIMIT)
+  [ -z "$v" ] && v="${defs[$i]}"
   if [ "$v" = "true" ]; then state[$i]=1; else state[$i]=0; fi
 done
 
@@ -166,7 +168,8 @@ else
 fi
 
 # --- write config: preserve unmanaged keys, rewrite managed ones ---
-managed="ICONS ${keys[*]}"
+# SHOW_SONNET_LIMIT is the pre-v2.13.0 name of SHOW_MODEL_USAGE; drop it on write.
+managed="ICONS SHOW_SONNET_LIMIT ${keys[*]}"
 tmp=$(mktemp)
 while IFS= read -r ln; do
   key=${ln%%=*}

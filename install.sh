@@ -147,7 +147,7 @@ mkdir -p "$INSTALL_DIR" "$COMMANDS_DIR" "$CLAUDE_DIR"
 fetch_from_manifest
 
 # --- write config ---
-# SHOW_SONNET_LIMIT defaults to false — feature is opt-in via /statusline-sonnet
+# SHOW_MODEL_USAGE defaults to false — feature is opt-in via /statusline-model-usage
 # because it reads the OAuth token from the macOS keychain (triggers a one-time
 # permission dialog) and makes outbound calls to api.anthropic.com.
 # JSONL signals (session duration, token speed, compaction) default to false —
@@ -156,7 +156,7 @@ fetch_from_manifest
 cat > "$INSTALL_DIR/.statusline.conf" <<CONF
 ICONS=$icon_mode
 SHOW_COST=$show_cost
-SHOW_SONNET_LIMIT=false
+SHOW_MODEL_USAGE=false
 SHOW_SESSION_DURATION=false
 SHOW_TOKEN_SPEED=false
 SHOW_COMPACTION=false

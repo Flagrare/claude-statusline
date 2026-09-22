@@ -34,7 +34,7 @@ Emoji mode:
 | CWD | **Opt-in** — fish-style abbreviated path (`~/D/c/claude-statusline`) on row 1, alongside the repo segment. Surfaces deep-subdir context the repo basename alone misses, and still shows the path when you're outside a repo. Enable with `/statusline-cwd`. |
 | Extra usage | **Opt-in** — pay-as-you-go overage spend (`+$12.50 (25%)`) when enabled on your account. Auto-hides otherwise. Enable with `/statusline-extra-usage`. |
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
-| 📖 Per-model weekly | **Opt-in** per-model weekly cap (`📖 fable:16%`), separate from the combined 7-day limit. Anthropic enforces a model-specific weekly limit on Pro/Max plans (currently Fable). Enable with `/statusline-sonnet` — see [Per-model usage](#per-model-usage-opt-in) below. |
+| 📖 Per-model weekly | **Opt-in** per-model weekly cap (`📖 fable:16%`), separate from the combined 7-day limit. Anthropic enforces a model-specific weekly limit on Pro/Max plans (currently Fable). Enable with `/statusline-model-usage` — see [Per-model usage](#per-model-usage-opt-in) below. |
 | Session cost | Estimated spend for the current session, calculated from the session JSONL file using Anthropic's published pricing. **Opt-in** — off by default. Set `SHOW_COST=true` in `.statusline.conf` (API plan users only; Pro/Max/Teams users don't need this) |
 | ⏱ Session duration | **Opt-in** — how long the current session has been running, from the first message timestamp in the JSONL. Enable with `/statusline-session-duration` |
 | 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
@@ -127,9 +127,9 @@ Claude Code's statusline JSON only exposes the combined 7-day rate limit. But on
 Enable with:
 
 ```
-/statusline-sonnet        # toggle
-/statusline-sonnet on
-/statusline-sonnet off
+/statusline-model-usage        # toggle
+/statusline-model-usage on
+/statusline-model-usage off
 ```
 
 Once enabled you'll see extra segments:
@@ -142,7 +142,7 @@ Once enabled you'll see extra segments:
 
 A small background poller (`usage-poller.sh`) calls `https://api.anthropic.com/api/oauth/usage` every ~5 minutes using the OAuth token Claude Code stores for its own `/usage` command — the same endpoint, no third parties. The response is cached at `~/.claude/.statusline-usage-cache.json` and the statusline reads from the cache on every render.
 
-One segment appears for each model the endpoint reports a scoped weekly cap for, labelled with that model's name, so when Anthropic moves the cap to a different model the segment follows without an update. Responses from before the change (`seven_day_sonnet` / `seven_day_opus`) still render as `sonnet:` / `opus:`. The command and the `SHOW_SONNET_LIMIT` config key keep their original names so existing configs keep working.
+One segment appears for each model the endpoint reports a scoped weekly cap for, labelled with that model's name, so when Anthropic moves the cap to a different model the segment follows without an update. Responses from before the change (`seven_day_sonnet` / `seven_day_opus`) still render as `sonnet:` / `opus:`. Before v2.13.0 this toggle was `/statusline-sonnet` (config key `SHOW_SONNET_LIMIT`); `/statusline-update` carries your setting over.
 
 ### macOS keychain prompt
 
@@ -178,7 +178,7 @@ Sixteen Claude Code slash commands are available after install:
 |---------|-------------|
 | `/statusline-icons` | Toggles between emoji and nerd mode. Pass a mode name to set directly: `/statusline-icons nerd` |
 | `/statusline-cost` | Toggles session cost display. Pass `on`/`off` to set directly. API plan users only. |
-| `/statusline-sonnet` | Toggles the per-model weekly usage segment (currently Fable). Pass `on`/`off` to set directly. Pro/Max only. |
+| `/statusline-model-usage` | Toggles the per-model weekly usage segment (currently Fable). Pass `on`/`off` to set directly. Pro/Max only. |
 | `/statusline-session-duration` | Toggles the session duration segment. Pass `on`/`off` to set directly. |
 | `/statusline-token-speed` | Toggles the token speed segment. Pass `on`/`off` to set directly. |
 | `/statusline-compaction` | Toggles the compaction counter. Pass `on`/`off` to set directly. |
