@@ -22,7 +22,7 @@ keys=(  SHOW_GIT_DIFF_STATS SHOW_PR SHOW_WORKTREE SHOW_CONFLICTS \
         SHOW_EXTRA_USAGE SHOW_COST SHOW_FAST_MODE SHOW_CONTEXT_WARNING \
         SHOW_AI_TITLE SHOW_GOAL SHOW_LOOP )
 labels=("Git diff stats (+N -N)" "PR link" "Worktree marker" "Merge-conflicts marker" \
-        "Per-model weekly usage (Sonnet/Opus)" "Output-style label" "Session ID" "Claude Code version badge" \
+        "Per-model weekly usage (Fable, etc.)" "Output-style label" "Session ID" "Claude Code version badge" \
         "CWD path" "Session duration" "Token speed" "Compaction counter" \
         "Extra usage (overage)" "Session cost" "Fast-mode badge" "Context warning" \
         "AI session title" "/goal indicator" "/loop indicator" )

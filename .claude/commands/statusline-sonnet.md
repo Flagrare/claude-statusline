@@ -1,6 +1,6 @@
-Toggle the per-model weekly usage indicator in the statusline (Sonnet, plus Opus when applicable). Pass "on"/"true" to enable or "off"/"false" to disable. Toggles if no argument given.
+Toggle the per-model weekly usage indicator in the statusline (currently Fable; follows whichever model your plan caps separately). Pass "on"/"true" to enable or "off"/"false" to disable. Toggles if no argument given.
 
-Adds a `sonnet:N% [resets]` segment showing Anthropic's per-model weekly cap, which is enforced separately from the combined 7-day limit. Useful for Pro/Max plan users who want to know how much Sonnet-specific quota they have left.
+Adds a segment such as `fable:N% [resets]` for each model with its own weekly cap, which Anthropic enforces separately from the combined 7-day limit. Useful for Pro/Max plan users who want to know how much model-specific quota they have left. The command keeps its `sonnet` name for compatibility with existing configs.
 
 **Requirements**
 - Claude Pro or Max plan. API plan users will see no change.

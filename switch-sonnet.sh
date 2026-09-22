@@ -29,16 +29,16 @@ fi
 
 if [ "$target" = "true" ]; then
   cat <<'MSG'
-Sonnet usage tracking: on
+Per-model usage tracking: on
 
   What it does
-    Adds a "sonnet:N% [resets]" segment (and "opus:N%" when applicable)
-    showing the per-model weekly cap Anthropic enforces in addition to the
-    combined 7-day limit.
+    Adds a segment per model with its own weekly cap (e.g. "fable:N% [resets]"),
+    alongside the combined 7-day limit. The model names come from the
+    usage endpoint, so the segment follows whichever model your plan scopes.
 
   Requirements
     Claude Pro or Max plan. API plan users will see no change — the endpoint
-    returns null for these fields.
+    reports no per-model caps for them.
 
   How it gets the data
     Every ~5 minutes a background poller calls
@@ -59,5 +59,5 @@ Sonnet usage tracking: on
   Restart Claude Code (or trigger any prompt) to see the new segment.
 MSG
 else
-  echo "Sonnet usage tracking: off"
+  echo "Per-model usage tracking: off"
 fi

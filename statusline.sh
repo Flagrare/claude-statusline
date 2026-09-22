@@ -75,6 +75,7 @@ case "$ICONS" in
     ICON_GOAL=$'\xef\x85\x80'         # nf-fa-bullseye        (U+F140)
     ICON_LOOP=$'\xef\x80\xa1'         # nf-fa-refresh         (U+F021)
     ICON_TITLE=$'\xef\x85\x9c'        # nf-fa-comment_o       (U+F0E5)
+    ICON_MODEL_QUOTA=$'\xef\x80\xad'  # nf-fa-book            (U+F02D)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -95,6 +96,7 @@ case "$ICONS" in
     ICON_GOAL="◎"     # U+25CE BULLSEYE                 — Claude Code's own /goal indicator
     ICON_LOOP="↻"     # U+21BB CLOCKWISE OPEN CIRCLE ARROW — recurring schedule
     ICON_TITLE="❝"    # U+275D HEAVY DOUBLE TURNED COMMA — quoted label
+    ICON_MODEL_QUOTA="¶" # U+00B6 PILCROW            — per-model (Fable) quota
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -115,6 +117,7 @@ case "$ICONS" in
     ICON_GOAL="[goal]"
     ICON_LOOP="[loop]"
     ICON_TITLE="[t]"
+    ICON_MODEL_QUOTA="[m]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -135,6 +138,7 @@ case "$ICONS" in
     ICON_GOAL="🎯"
     ICON_LOOP="🔁"
     ICON_TITLE="📝"
+    ICON_MODEL_QUOTA="📖"
     ;;
 esac
 
@@ -622,8 +626,7 @@ limit=$(format_rate_segment "5h" "$five_pct"  "$five_resets"  18000  "short")
 week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long")
 
 # --- per-model weekly limits (opt-in; from background-polled cache) ---
-sonnet_limit=""
-opus_limit=""
+model_limit_segs=()
 if [ "$SHOW_SONNET_LIMIT" = "true" ]; then
   CACHE_FILE="$HOME/.claude/.statusline-usage-cache.json"
   POLLER="$SCRIPT_DIR/usage-poller.sh"
@@ -641,22 +644,29 @@ if [ "$SHOW_SONNET_LIMIT" = "true" ]; then
     ( "$POLLER" >/dev/null 2>&1 & ) &>/dev/null
   fi
 
+  # Per-model weekly caps live in `limits[]` as `weekly_scoped` entries keyed
+  # by model display name (e.g. "Fable"), so whichever model the plan scopes
+  # renders without code changes. Older responses only had the fixed
+  # `seven_day_sonnet` / `seven_day_opus` objects; fall back to those.
   if [ -f "$CACHE_FILE" ]; then
-    eval "$(jq -r '
-      @sh "sonnet_pct=\(.seven_day_sonnet.utilization // "")",
-      @sh "sonnet_iso=\(.seven_day_sonnet.resets_at // "")",
-      @sh "opus_pct=\(.seven_day_opus.utilization // "")",
-      @sh "opus_iso=\(.seven_day_opus.resets_at // "")"
-    ' "$CACHE_FILE" 2>/dev/null)" 2>/dev/null || true
-
-    if [ -n "$sonnet_pct" ] && [ -n "$sonnet_iso" ]; then
-      sonnet_resets=$(iso_to_epoch "$sonnet_iso")
-      sonnet_limit=$(format_rate_segment "sonnet" "$sonnet_pct" "$sonnet_resets" 604800 "long")
-    fi
-    if [ -n "$opus_pct" ] && [ -n "$opus_iso" ]; then
-      opus_resets=$(iso_to_epoch "$opus_iso")
-      opus_limit=$(format_rate_segment "opus" "$opus_pct" "$opus_resets" 604800 "long")
-    fi
+    while IFS=$'\t' read -r m_label m_pct m_iso; do
+      [ -z "$m_label" ] && continue
+      m_resets=$(iso_to_epoch "$m_iso")
+      seg=$(format_rate_segment "$m_label" "$m_pct" "$m_resets" 604800 "long")
+      [ -n "$seg" ] && model_limit_segs+=("${ICON_MODEL_QUOTA} ${seg}")
+    done < <(jq -r '
+      [ .limits[]?
+        | select(.kind == "weekly_scoped" and .scope.model.display_name != null
+                 and .percent != null and .resets_at != null)
+        | [(.scope.model.display_name | ascii_downcase | gsub(" "; "-")),
+           (.percent | tostring), .resets_at] ] as $scoped
+      | if ($scoped | length) > 0 then $scoped[]
+        else (["sonnet", .seven_day_sonnet], ["opus", .seven_day_opus])
+          | select(.[1].utilization != null and .[1].resets_at != null)
+          | [.[0], (.[1].utilization | tostring), .[1].resets_at]
+        end
+      | @tsv
+    ' "$CACHE_FILE" 2>/dev/null)
   fi
 fi
 
@@ -902,7 +912,7 @@ disp_width() {
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -955,7 +965,7 @@ wrap_segs() {
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" "$sonnet_limit" "$opus_limit" "$ctx_seg" "$ctx_warn_seg")
+row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
 row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then
