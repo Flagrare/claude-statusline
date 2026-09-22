@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.12.0: 2026-09-22
+
+The per-model weekly segment tracks Fable, and gets an icon of its own.
+
+### Behaviour
+
+- **`/statusline-sonnet`**: shows your Fable weekly cap (`📖 fable:16% 🍃 [4d23h]`). The segment now follows whichever models your plan caps separately, labelled by name, so the next model change needs no update. The command and `SHOW_SONNET_LIMIT` keep their names; existing configs work unchanged.
+- **Per-model icon**: 📖 in emoji mode, a book glyph in nerd, `¶` in unicode, `[m]` in ascii.
+- **`/statusline-config`**: toggle label "Per-model weekly usage (Sonnet/Opus)" → "Per-model weekly usage (Fable, etc.)".
+
+### Bug Fixes
+
+- The per-model segment rendered nothing after Anthropic moved per-model caps out of `seven_day_sonnet` / `seven_day_opus`. Older responses in that shape still render as `sonnet:` / `opus:`.
+
+---
+
 ## v2.11.0 — 2026-06-09
 
 `/statusline-config` now uses real checkboxes when [`gum`](https://github.com/charmbracelet/gum) is installed. Arrow keys to navigate, space to toggle, enter to save.
