@@ -156,6 +156,7 @@ fetch_from_manifest
 cat > "$INSTALL_DIR/.statusline.conf" <<CONF
 ICONS=$icon_mode
 SHOW_COST=$show_cost
+SHOW_DAILY_TOKENS=false
 SHOW_MODEL_USAGE=false
 SHOW_SESSION_DURATION=false
 SHOW_TOKEN_SPEED=false

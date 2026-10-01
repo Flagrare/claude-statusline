@@ -10,10 +10,12 @@ dat VERSION
 
 bin statusline.sh
 bin usage-poller.sh
+bin daily-tokens.sh
 bin version-check.sh
 bin configure.sh
 bin switch-icons.sh
 bin switch-cost.sh
+bin switch-daily-tokens.sh
 bin switch-model-usage.sh
 bin switch-session-duration.sh
 bin switch-token-speed.sh
@@ -38,6 +40,7 @@ cmd .claude/commands/statusline-version.md
 cmd .claude/commands/statusline-config.md
 cmd .claude/commands/statusline-icons.md
 cmd .claude/commands/statusline-cost.md
+cmd .claude/commands/statusline-daily-tokens.md
 cmd .claude/commands/statusline-model-usage.md
 cmd .claude/commands/statusline-session-duration.md
 cmd .claude/commands/statusline-token-speed.md

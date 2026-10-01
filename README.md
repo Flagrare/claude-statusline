@@ -36,6 +36,7 @@ Emoji mode:
 | 5h / 7d rate limits | How much of your token budget you've used, how long until it resets, and whether you're burning through it faster than the clock would suggest (🔥 burning fast, ⚡️ on track, 🍃 relaxed) |
 | 📖 Per-model weekly | **Opt-in** per-model weekly cap (`📖 fable:16%`), separate from the combined 7-day limit. Anthropic enforces a model-specific weekly limit on Pro/Max plans (currently Fable). Enable with `/statusline-model-usage` — see [Per-model usage](#per-model-usage-opt-in) below. |
 | Session cost | Estimated spend for the current session, calculated from the session JSONL file using Anthropic's published pricing. **Opt-in** — off by default. Set `SHOW_COST=true` in `.statusline.conf` (API plan users only; Pro/Max/Teams users don't need this) |
+| 📊 Tokens today | **Opt-in** — every token used since local midnight, across all sessions, projects, and subagents (`📊 297.3M today`). Sums input, output, cache writes, and cache reads; cache reads are usually most of it, so read it as tokens processed, not tokens billed at the full rate. Enable with `/statusline-daily-tokens` — see [Tokens today](#tokens-today-opt-in) below. |
 | ⏱ Session duration | **Opt-in** — how long the current session has been running, from the first message timestamp in the JSONL. Enable with `/statusline-session-duration` |
 | 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
@@ -158,6 +159,14 @@ Click **Always Allow** so you don't see it again. The token never leaves your ma
 - Free plan users — same as above.
 - Token expired — the poller silently waits; Claude Code refreshes the keychain entry on its next API call and the next poll picks it up.
 
+## Tokens today (opt-in)
+
+`/statusline-daily-tokens` adds `📊 297.3M today` to the second row: the running total for the local day, across every Claude Code session on the machine.
+
+A day of session logs can reach hundreds of MB, so the statusline never reads them during a render. A background script (`daily-tokens.sh`) refreshes the total at most once a minute and reads only the lines appended since its last pass, keeping a byte offset per log in `~/.claude/.statusline-state/daily-tokens`. Claude Code logs each content block of a reply as its own line with the same usage attached, so the script counts each API request once. The first pass of the day reads everything written so far and can take a few seconds; the segment appears on the next render after it finishes. The total resets at local midnight.
+
+The number is input + output + cache writes + cache reads. Cache reads (the conversation re-read from the prompt cache on each turn) are usually most of it. No network calls.
+
 ## JSONL signals (opt-in)
 
 Three extra segments are derived from the current session's transcript JSONL under `~/.claude/projects/<encoded-cwd>/`. All three default to off and have their own toggle.
@@ -178,6 +187,7 @@ Sixteen Claude Code slash commands are available after install:
 |---------|-------------|
 | `/statusline-icons` | Toggles between emoji and nerd mode. Pass a mode name to set directly: `/statusline-icons nerd` |
 | `/statusline-cost` | Toggles session cost display. Pass `on`/`off` to set directly. API plan users only. |
+| `/statusline-daily-tokens` | Toggles the tokens-used-today segment. Pass `on`/`off` to set directly. |
 | `/statusline-model-usage` | Toggles the per-model weekly usage segment (currently Fable). Pass `on`/`off` to set directly. Pro/Max only. |
 | `/statusline-session-duration` | Toggles the session duration segment. Pass `on`/`off` to set directly. |
 | `/statusline-token-speed` | Toggles the token speed segment. Pass `on`/`off` to set directly. |

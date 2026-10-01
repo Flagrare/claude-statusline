@@ -11,6 +11,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ICONS="emoji"
 SHOW_COST="false"
+SHOW_DAILY_TOKENS="false"
 SHOW_MODEL_USAGE=""
 SHOW_SESSION_DURATION="false"
 SHOW_TOKEN_SPEED="false"
@@ -78,6 +79,7 @@ case "$ICONS" in
     ICON_LOOP=$'\xef\x80\xa1'         # nf-fa-refresh         (U+F021)
     ICON_TITLE=$'\xef\x85\x9c'        # nf-fa-comment_o       (U+F0E5)
     ICON_MODEL_QUOTA=$'\xef\x80\xad'  # nf-fa-book            (U+F02D)
+    ICON_DAILY=$'\xef\x82\x80'        # nf-fa-bar_chart       (U+F080)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -99,6 +101,7 @@ case "$ICONS" in
     ICON_LOOP="↻"     # U+21BB CLOCKWISE OPEN CIRCLE ARROW — recurring schedule
     ICON_TITLE="❝"    # U+275D HEAVY DOUBLE TURNED COMMA — quoted label
     ICON_MODEL_QUOTA="¶" # U+00B6 PILCROW            — per-model (Fable) quota
+    ICON_DAILY="Σ"       # U+03A3 GREEK CAPITAL SIGMA — day's running sum
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -120,6 +123,7 @@ case "$ICONS" in
     ICON_LOOP="[loop]"
     ICON_TITLE="[t]"
     ICON_MODEL_QUOTA="[m]"
+    ICON_DAILY="[day]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -141,6 +145,7 @@ case "$ICONS" in
     ICON_LOOP="🔁"
     ICON_TITLE="📝"
     ICON_MODEL_QUOTA="📖"
+    ICON_DAILY="📊"
     ;;
 esac
 
@@ -874,10 +879,13 @@ if [ "$SHOW_FAST_MODE" = "true" ] && [ "$fast_mode" = "true" ]; then
   fast_seg="${CLR_YELLOW}${ICON_FAST} fast${CLR_RESET}"
 fi
 
-# Humanize a token count for the warning label: 200000 → 200k, 1500000 → 1.5M.
+# Humanize a token count: 200000 → 200k, 1500000 → 1.5M, 2300000000 → 2.3B.
 humanize_tokens() {
   local n=$1
-  if [ "$n" -ge 1000000 ] 2>/dev/null; then
+  if [ "$n" -ge 1000000000 ] 2>/dev/null; then
+    local whole=$(( n / 1000000000 )) frac=$(( (n % 1000000000) / 100000000 ))
+    if [ "$frac" -eq 0 ]; then printf "%dB" "$whole"; else printf "%d.%dB" "$whole" "$frac"; fi
+  elif [ "$n" -ge 1000000 ] 2>/dev/null; then
     local whole=$(( n / 1000000 )) frac=$(( (n % 1000000) / 100000 ))
     if [ "$frac" -eq 0 ]; then printf "%dM" "$whole"; else printf "%d.%dM" "$whole" "$frac"; fi
   elif [ "$n" -ge 1000 ] 2>/dev/null; then
@@ -902,6 +910,31 @@ if [ "$SHOW_CONTEXT_WARNING" = "true" ]; then
   fi
 fi
 
+# Today's tokens across every session (opt-in). Cache-only render: the sum
+# lives in a state file that daily-tokens.sh refreshes in the background at
+# most once a minute. Counts input + output + cache writes + cache reads.
+daily_tokens_seg=""
+if [ "$SHOW_DAILY_TOKENS" = "true" ]; then
+  DAILY_STATE="$HOME/.claude/.statusline-state/daily-tokens"
+  daily_mtime=0
+  [ -f "$DAILY_STATE" ] && daily_mtime=$(stat -f %m "$DAILY_STATE" 2>/dev/null || stat -c %Y "$DAILY_STATE" 2>/dev/null || echo 0)
+  if [ $(( $(date +%s) - daily_mtime )) -ge 60 ] && [ -x "$SCRIPT_DIR/daily-tokens.sh" ]; then
+    ( "$SCRIPT_DIR/daily-tokens.sh" >/dev/null 2>&1 & ) &>/dev/null
+  fi
+  if [ -f "$DAILY_STATE" ]; then
+    read -r d_day d_in d_out d_cc d_cr < "$DAILY_STATE"
+    case "$d_in$d_out$d_cc$d_cr" in
+      ''|*[!0-9]*) ;;
+      *)
+        d_total=$(( d_in + d_out + d_cc + d_cr ))
+        if [ "$d_day" = "$(date +%Y-%m-%d)" ] && [ "$d_total" -gt 0 ]; then
+          daily_tokens_seg="${ICON_DAILY} ${CLR_DIM}$(humanize_tokens "$d_total") today${CLR_RESET}"
+        fi
+        ;;
+    esac
+  fi
+fi
+
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
@@ -914,7 +947,7 @@ disp_width() {
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -968,7 +1001,7 @@ ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
 row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
-row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$cost_seg")
+row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$daily_tokens_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then
   printf "%s\n%s" "$row1" "$row2"
