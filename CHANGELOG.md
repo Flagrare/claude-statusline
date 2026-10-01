@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.14.0: 2026-10-01
+
+See how many tokens you've used today, across every session.
+
+### General
+
+- **`/statusline-daily-tokens`**: new opt-in segment on the second row, `📊 297.3M today`. It counts every token since local midnight across all sessions, projects, and subagents, and resets at midnight. The number includes cache reads, which are usually most of it, so read it as tokens processed rather than tokens billed at the full rate.
+- **Icons**: 📊 in emoji mode, a bar-chart glyph in nerd, `Σ` in unicode, `[day]` in ascii.
+- **`/statusline-config`**: new "Tokens used today" checkbox.
+
+### Behaviour
+
+- The total is refreshed in the background at most once a minute and never slows a render. Only new log lines are read on each refresh; the first one of the day can take a few seconds, so the segment shows up a moment after you turn it on.
+- Token counts above a billion now read `1.2B` instead of `1200M`.
+
+---
+
 ## v2.13.0: 2026-09-22
 
 The per-model usage toggle gets a name that matches what it shows.
