@@ -22,7 +22,12 @@ else
 fi
 
 if grep -q '^ICONS=' "$CONF" 2>/dev/null; then
-  sed -i '' "s/^ICONS=.*/ICONS=${target}/" "$CONF"
+  # Portable in-place edit (matches the mktemp pattern in install/update/uninstall).
+  # `sed -i ''` is BSD/macOS-only; on GNU sed (Linux/WSL) the '' is read as the
+  # script and $CONF as a second input file, so the write silently fails.
+  tmp=$(mktemp)
+  sed "s/^ICONS=.*/ICONS=${target}/" "$CONF" > "$tmp"
+  mv "$tmp" "$CONF"
 else
   echo "ICONS=${target}" >> "$CONF"
 fi

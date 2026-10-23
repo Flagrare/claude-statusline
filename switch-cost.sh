@@ -22,7 +22,12 @@ esac
 
 # Write back
 if grep -q '^SHOW_COST=' "$CONF" 2>/dev/null; then
-  sed -i '' "s/^SHOW_COST=.*/SHOW_COST=${target}/" "$CONF"
+  # Portable in-place edit (matches the mktemp pattern in install/update/uninstall).
+  # `sed -i ''` is BSD/macOS-only; on GNU sed (Linux/WSL) the '' is read as the
+  # script and $CONF as a second input file, so the write silently fails.
+  tmp=$(mktemp)
+  sed "s/^SHOW_COST=.*/SHOW_COST=${target}/" "$CONF" > "$tmp"
+  mv "$tmp" "$CONF"
 else
   echo "SHOW_COST=${target}" >> "$CONF"
 fi
