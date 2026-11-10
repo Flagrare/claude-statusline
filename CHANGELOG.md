@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.16.0: 2026-11-10
+
+See when a session hands work to another one, and how it went.
+
+### General
+
+- **Handoff segment**: new on the top row, next to the account badge. `🔀 Enterprise: working 1m05s · <task>` while a handed-off task runs, `🔀 Enterprise ×3 · 4m ago` afterwards, red for 15 minutes when one fails, and `no answer` when a task has been "working" for over 30 minutes. It stays hidden until something hands work off.
+- **Open format**: any tool can drive it by writing one small JSON file per session. The README's Handoffs section lists the fields.
+- **`/statusline-handoff`**: toggles it. On by default, since it only shows up when used.
+- **Icons**: 🔀 in emoji mode, an exchange glyph in nerd, `⇄` in unicode, `<->` in ascii.
+
+---
+
 ## v2.15.1: 2026-11-10
 
 Profiles run with `CLAUDE_CONFIG_DIR` no longer show another account's numbers.
