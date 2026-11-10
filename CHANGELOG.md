@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.15.0: 2026-11-10
+
+See which account a session is spending, and catch work on the wrong one.
+
+### General
+
+- **`/statusline-account`**: new opt-in badge at the start of the top row, `👤 Max · example.com`. It shows the plan and email domain of the login the session bills to. Orange means an individual plan (Pro, Max, Ultra); blue means Team, Enterprise, or a cloud provider (Bedrock, Vertex, Foundry).
+- **Work domains**: set `ACCOUNT_WORK_DOMAINS=example.com,example.org` in `.statusline.conf` and any login outside those domains turns red with ⚠️.
+- **Icons**: 👤 in emoji mode, a user glyph in nerd, `◈` in unicode, `[acct]` in ascii.
+- **`/statusline-config`**: new "Account badge" checkbox.
+
+### Behaviour
+
+- The badge follows a `/login` to another account mid-session, and respects `CLAUDE_CONFIG_DIR`, so each config directory shows its own login. No network calls.
+
+---
+
 ## v2.14.0: 2026-10-01
 
 See how many tokens you've used today, across every session.
