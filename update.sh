@@ -94,7 +94,7 @@ if grep -q '^SHOW_SONNET_LIMIT=' "$CONF" 2>/dev/null; then
 fi
 rm -f "$COMMANDS_DIR/statusline-sonnet.md" "$INSTALL_DIR/switch-sonnet.sh"
 
-# --- re-run on a timer: since v2.17.0 the status line asks Claude Code to
+# --- re-run on a timer: since v3.0.0 the status line asks Claude Code to
 # refresh every 5s so elapsed/countdown segments stay current while idle ---
 if [ -f "$SETTINGS" ] && command -v jq &>/dev/null \
    && [ "$(jq -r '.statusLine.command // empty' "$SETTINGS" 2>/dev/null)" != "" ] \

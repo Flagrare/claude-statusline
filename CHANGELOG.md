@@ -1,8 +1,10 @@
 # Changelog
 
-## v2.17.0: 2026-11-10
+## v3.0.0: 2026-11-10
 
 Rows stop breaking mid-segment, timers keep moving while Claude is idle, and subagents get a useful row.
+
+This is a major version because install and update now change your Claude Code settings: they turn on a 5-second `refreshInterval` and keep your other `statusLine` keys. Everything since v2.15 (account badge, handoffs, profile support) builds toward the same thing, a status line that shows which account and which session is doing the work.
 
 ### General
 
