@@ -981,9 +981,10 @@ account_segment() {
   fi
   [ -f "$acct_file" ] || return
   eval "$(jq -r '
-    @sh "plan=\(.oauthAccount.planDisplayName // "")",
-    @sh "org_type=\(.oauthAccount.organizationType // "")",
-    @sh "email=\(.oauthAccount.emailAddress // "")"
+    def txt: tostring | gsub("[\u0000-\u001f\u007f]"; " ");
+    @sh "plan=\((.oauthAccount.planDisplayName // "") | txt)",
+    @sh "org_type=\((.oauthAccount.organizationType // "") | txt)",
+    @sh "email=\((.oauthAccount.emailAddress // "") | txt)"
   ' "$acct_file" 2>/dev/null)" 2>/dev/null || return
   [ -z "$email" ] && [ -z "$org_type" ] && return
   if [ -z "$plan" ]; then
@@ -1033,14 +1034,19 @@ handoff_segment() {
   local f="$CLAUDE_DIR/.statusline-state/handoff-${session_id}.json"
   [ -f "$f" ] || return
   local label status task started finished calls err now
+  # Every field is forced to a string with control characters removed, so a
+  # malformed file can neither inject shell words into the eval (an array
+  # through @sh becomes several words) nor print terminal escape codes.
   eval "$(jq -r '
-    @sh "label=\(.label // "handoff")",
-    @sh "status=\(.status // "")",
-    @sh "task=\(.task // "" | gsub("[\\n\\r\\t]"; " "))",
-    @sh "started=\(.started_at // 0 | floor)",
-    @sh "finished=\(.finished_at // 0 | floor)",
-    @sh "calls=\(.calls // 0 | floor)",
-    @sh "err=\(.error // "" | gsub("[\\n\\r\\t]"; " "))"
+    def txt: tostring | gsub("[\u0000-\u001f\u007f]"; " ");
+    def num: if type == "number" then floor else 0 end;
+    @sh "label=\((.label // "handoff") | txt)",
+    @sh "status=\((.status // "") | txt)",
+    @sh "task=\((.task // "") | txt)",
+    @sh "started=\((.started_at | num) | tostring)",
+    @sh "finished=\((.finished_at | num) | tostring)",
+    @sh "calls=\((.calls | num) | tostring)",
+    @sh "err=\((.error // "") | txt)"
   ' "$f" 2>/dev/null)" 2>/dev/null || return
   now=$(date +%s)
   case "$status" in
