@@ -48,6 +48,7 @@ rm -f "$COMMANDS_DIR/statusline-session-id.md"
 rm -f "$COMMANDS_DIR/statusline-version.md"
 rm -f "$COMMANDS_DIR/statusline-cwd.md"
 rm -f "$COMMANDS_DIR/statusline-extra-usage.md"
+rm -f "$COMMANDS_DIR/statusline-account.md"
 echo "Removed slash commands."
 
 rm -rf "$INSTALL_DIR"

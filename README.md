@@ -22,6 +22,7 @@ Emoji mode:
 
 | Segment | What you see |
 |---------|-------------|
+| 👤 Account | **Opt-in**: which login this session bills to: plan and email domain (`👤 Max · example.com`). Orange for individual plans, blue for Team/Enterprise or a cloud provider, red with ⚠️ when the domain isn't in `ACCOUNT_WORK_DOMAINS`. Follows a mid-session `/login`. Enable with `/statusline-account`, see [Account badge](#account-badge-opt-in) below. |
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
 | ⚡ Fast mode | A `⚡ fast` badge on the top row while Claude Code's Fast mode is active. Auto-hides otherwise. **On by default** — toggle with `/statusline-fast-mode`. |
@@ -167,6 +168,20 @@ A day of session logs can reach hundreds of MB, so the statusline never reads th
 
 The number is input + output + cache writes + cache reads. Cache reads (the conversation re-read from the prompt cache on each turn) are usually most of it. No network calls.
 
+## Account badge (opt-in)
+
+`/statusline-account` puts the session's login at the start of the top row, e.g. `👤 Max · example.com`. It helps when you keep more than one account, such as a personal subscription in one config directory and a company seat in another (`CLAUDE_CONFIG_DIR`), and want to see at a glance which one a session is spending.
+
+The badge reads the login Claude Code saved in `~/.claude.json`, or in `$CLAUDE_CONFIG_DIR/.claude.json` when that variable is set, so it changes as soon as you run `/login` with another account. When `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX` or `CLAUDE_CODE_USE_FOUNDRY` is set, the provider outranks any login, and the badge shows the provider instead.
+
+To catch a session on the wrong account, list the domains your work logins use in `.statusline.conf`, comma-separated with no spaces:
+
+```
+ACCOUNT_WORK_DOMAINS=example.com,example.org
+```
+
+A login outside those domains renders red with ⚠️. No network calls.
+
 ## JSONL signals (opt-in)
 
 Three extra segments are derived from the current session's transcript JSONL under `~/.claude/projects/<encoded-cwd>/`. All three default to off and have their own toggle.
@@ -181,7 +196,7 @@ All three are pure local reads — no network calls. Token speed and session dur
 
 ## Slash commands
 
-Sixteen Claude Code slash commands are available after install:
+Twenty-eight Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
@@ -203,6 +218,7 @@ Sixteen Claude Code slash commands are available after install:
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
 | `/statusline-cwd` | Toggles the fish-style abbreviated path on row 1, alongside the repo segment. Off by default. |
+| `/statusline-account` | Toggles the account badge (plan + email domain). Pass `on`/`off` to set directly. |
 | `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |
 | `/statusline-goal` | Toggles the `/goal` indicator on row 1. **On by default**; segment is silent unless a goal is active. |
 | `/statusline-loop` | Toggles the `/loop` indicator on row 1. **On by default**; segment is silent unless a loop is scheduled. |

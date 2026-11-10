@@ -29,6 +29,7 @@ bin switch-session-id.sh
 bin switch-claude-version.sh
 bin switch-cwd.sh
 bin switch-extra-usage.sh
+bin switch-account.sh
 bin switch-fast-mode.sh
 bin switch-context-warning.sh
 bin switch-ai-title.sh
@@ -54,6 +55,7 @@ cmd .claude/commands/statusline-session-id.md
 cmd .claude/commands/statusline-claude-version.md
 cmd .claude/commands/statusline-cwd.md
 cmd .claude/commands/statusline-extra-usage.md
+cmd .claude/commands/statusline-account.md
 cmd .claude/commands/statusline-fast-mode.md
 cmd .claude/commands/statusline-context-warning.md
 cmd .claude/commands/statusline-ai-title.md

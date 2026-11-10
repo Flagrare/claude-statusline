@@ -31,6 +31,8 @@ CONTEXT_WARNING_TOKENS="200000"
 SHOW_AI_TITLE="false"
 SHOW_GOAL="true"
 SHOW_LOOP="true"
+SHOW_ACCOUNT="false"
+ACCOUNT_WORK_DOMAINS=""
 AI_TITLE_MAX_CHARS="40"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
   source "$SCRIPT_DIR/.statusline.conf"
@@ -80,6 +82,7 @@ case "$ICONS" in
     ICON_TITLE=$'\xef\x85\x9c'        # nf-fa-comment_o       (U+F0E5)
     ICON_MODEL_QUOTA=$'\xef\x80\xad'  # nf-fa-book            (U+F02D)
     ICON_DAILY=$'\xef\x82\x80'        # nf-fa-bar_chart       (U+F080)
+    ICON_ACCOUNT=$'\xef\x80\x87'      # nf-fa-user            (U+F007)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -102,6 +105,7 @@ case "$ICONS" in
     ICON_TITLE="❝"    # U+275D HEAVY DOUBLE TURNED COMMA — quoted label
     ICON_MODEL_QUOTA="¶" # U+00B6 PILCROW            — per-model (Fable) quota
     ICON_DAILY="Σ"       # U+03A3 GREEK CAPITAL SIGMA — day's running sum
+    ICON_ACCOUNT="◈"     # U+25C8 WHITE DIAMOND CONTAINING BLACK SMALL DIAMOND: who's billed
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -124,6 +128,7 @@ case "$ICONS" in
     ICON_TITLE="[t]"
     ICON_MODEL_QUOTA="[m]"
     ICON_DAILY="[day]"
+    ICON_ACCOUNT="[acct]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -146,6 +151,7 @@ case "$ICONS" in
     ICON_TITLE="📝"
     ICON_MODEL_QUOTA="📖"
     ICON_DAILY="📊"
+    ICON_ACCOUNT="👤"
     ;;
 esac
 
@@ -935,6 +941,60 @@ if [ "$SHOW_DAILY_TOKENS" = "true" ]; then
   fi
 fi
 
+# Account badge (opt-in): which login this session bills to, e.g. "👤 Max · example.com".
+# Read from the login Claude Code stores in .claude.json (inside CLAUDE_CONFIG_DIR
+# when that's set), so it follows a mid-session /login. A cloud provider
+# (Bedrock/Vertex/Foundry) outranks any login, so it's shown instead.
+# Org plans (Enterprise, Team) render blue, individual plans orange. With
+# ACCOUNT_WORK_DOMAINS set (comma-separated), a login outside those domains
+# renders red with a warning.
+account_segment() {
+  local provider="" acct_file plan org_type email domain color warn=""
+  if [ "${CLAUDE_CODE_USE_BEDROCK:-}" = "1" ] || [ "${CLAUDE_CODE_USE_BEDROCK:-}" = "true" ]; then provider="Bedrock"
+  elif [ "${CLAUDE_CODE_USE_VERTEX:-}" = "1" ] || [ "${CLAUDE_CODE_USE_VERTEX:-}" = "true" ]; then provider="Vertex"
+  elif [ "${CLAUDE_CODE_USE_FOUNDRY:-}" = "1" ] || [ "${CLAUDE_CODE_USE_FOUNDRY:-}" = "true" ]; then provider="Foundry"
+  fi
+  if [ -n "$provider" ]; then
+    printf "%s" "${CLR_BLUE}${ICON_ACCOUNT} ${provider}${CLR_RESET}"
+    return
+  fi
+  acct_file="$HOME/.claude.json"
+  [ -n "${CLAUDE_CONFIG_DIR:-}" ] && [ -f "$CLAUDE_CONFIG_DIR/.claude.json" ] && acct_file="$CLAUDE_CONFIG_DIR/.claude.json"
+  [ -f "$acct_file" ] || return
+  eval "$(jq -r '
+    @sh "plan=\(.oauthAccount.planDisplayName // "")",
+    @sh "org_type=\(.oauthAccount.organizationType // "")",
+    @sh "email=\(.oauthAccount.emailAddress // "")"
+  ' "$acct_file" 2>/dev/null)" 2>/dev/null || return
+  [ -z "$email" ] && [ -z "$org_type" ] && return
+  if [ -z "$plan" ]; then
+    case "$org_type" in
+      claude_enterprise) plan="Enterprise" ;;
+      claude_team)       plan="Team" ;;
+      claude_max)        plan="Max" ;;
+      claude_pro)        plan="Pro" ;;
+      *)                 plan="${org_type#claude_}" ;;
+    esac
+  fi
+  case "$org_type" in
+    *enterprise*|*team*) color="$CLR_BLUE" ;;
+    *)                   color="$CLR_ORANGE" ;;
+  esac
+  domain="${email##*@}"
+  if [ -n "$ACCOUNT_WORK_DOMAINS" ] && [ -n "$domain" ]; then
+    case ",${ACCOUNT_WORK_DOMAINS// /}," in
+      *",${domain},"*) ;;
+      *) color="$CLR_RED"; warn=" ${ICON_WARN}" ;;
+    esac
+  fi
+  printf "%s" "${color}${ICON_ACCOUNT} ${plan}${CLR_RESET}${CLR_DIM}${domain:+ · ${domain}}${CLR_RESET}${warn:+${CLR_RED}${warn}${CLR_RESET}}"
+}
+
+account_seg=""
+if [ "$SHOW_ACCOUNT" = "true" ]; then
+  account_seg=$(account_segment)
+fi
+
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
@@ -947,7 +1007,7 @@ disp_width() {
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊" "👤"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -1000,7 +1060,7 @@ wrap_segs() {
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-row1=$(wrap_segs "$term_width" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
+row1=$(wrap_segs "$term_width" "$account_seg" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
 row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$daily_tokens_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then
