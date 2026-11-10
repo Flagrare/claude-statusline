@@ -94,6 +94,16 @@ if grep -q '^SHOW_SONNET_LIMIT=' "$CONF" 2>/dev/null; then
 fi
 rm -f "$COMMANDS_DIR/statusline-sonnet.md" "$INSTALL_DIR/switch-sonnet.sh"
 
+# --- re-run on a timer: since v2.17.0 the status line asks Claude Code to
+# refresh every 5s so elapsed/countdown segments stay current while idle ---
+if [ -f "$SETTINGS" ] && command -v jq &>/dev/null \
+   && [ "$(jq -r '.statusLine.command // empty' "$SETTINGS" 2>/dev/null)" != "" ] \
+   && [ "$(jq -r '.statusLine.refreshInterval // empty' "$SETTINGS" 2>/dev/null)" = "" ]; then
+  tmp=$(mktemp)
+  jq '.statusLine.refreshInterval = 5' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+  echo "Set statusLine.refreshInterval to 5s (timers keep ticking while Claude is idle)."
+fi
+
 # --- update settings.json to point to new location ---
 if [ -f "$SETTINGS" ]; then
   current_cmd=$(jq -r '.statusLine.command // empty' "$SETTINGS" 2>/dev/null)
@@ -104,14 +114,17 @@ import json, sys
 settings_path, script_path = sys.argv[1], sys.argv[2]
 with open(settings_path) as f:
     data = json.load(f)
-data["statusLine"] = {"type": "command", "command": script_path}
+sl = data.get("statusLine") if isinstance(data.get("statusLine"), dict) else {}
+sl.update({"type": "command", "command": script_path})
+sl.setdefault("refreshInterval", 5)  # keeps timers (handoff, cache, resets) ticking while idle
+data["statusLine"] = sl
 with open(settings_path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 PYEOF
     elif command -v jq &>/dev/null; then
       tmp=$(mktemp)
-      jq --arg cmd "$INSTALL_DIR/statusline.sh" '. + {statusLine: {type: "command", command: $cmd}}' "$SETTINGS" > "$tmp"
+      jq --arg cmd "$INSTALL_DIR/statusline.sh" '.statusLine = ((.statusLine // {}) + {type: "command", command: $cmd}) | .statusLine.refreshInterval //= 5' "$SETTINGS" > "$tmp"
       mv "$tmp" "$SETTINGS"
     fi
     echo "Updated settings.json to point to new location."

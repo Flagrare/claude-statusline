@@ -41,6 +41,7 @@ Emoji mode:
 | 📊 Tokens today | **Opt-in** — every token used since local midnight, across all sessions, projects, and subagents (`📊 297.3M today`). Sums input, output, cache writes, and cache reads; cache reads are usually most of it, so read it as tokens processed, not tokens billed at the full rate. Enable with `/statusline-daily-tokens` — see [Tokens today](#tokens-today-opt-in) below. |
 | ⏱ Session duration | **Opt-in** — how long the current session has been running, from the first message timestamp in the JSONL. Enable with `/statusline-session-duration` |
 | 💨 Token speed | **Opt-in** — last assistant turn's input↓ / output↑ tokens per second. Useful for spotting tool-call latency vs. generation speed. Enable with `/statusline-token-speed` |
+| 🧊 Prompt cache | **Opt-in** next to the context bar: share of input read from cache (`🧊 94%`) and, while the cache is warm, time until it goes cold (`warm 3m`, yellow in the last minute). `cold` means the next turn re-reads the whole conversation. Enable with `/statusline-cache`. |
 | Context window | A 10-block progress bar — green below 50%, yellow to 70%, red above — so you know when compaction is coming |
 | ⚠ context warning | A red `⚠ >Nk` badge once the context reaches `CONTEXT_WARNING_TOKENS` (default `200000` — the long-context pricing line). The label tracks the threshold (`>200k`, `>150k`, `>1.5M`). **On by default** — set the threshold with `/statusline-context-warning 150k`, toggle with `/statusline-context-warning off`. |
 | 🔄 Compaction counter | **Opt-in** — appears next to the context bar after one or more auto-compactions in the current session. Enable with `/statusline-compaction` |
@@ -59,11 +60,20 @@ Within a row, segments are a continuous group separated by ` │ ` and rendered 
 
 When a row is wider than your terminal, it **wraps** onto another line at a ` │ ` boundary rather than truncating at the edge — so nothing important falls off-screen, it just flows downward. (A single segment wider than the whole terminal still takes its own line; there's nothing smaller to break on.)
 
-Width is detected automatically in this order: `COLS` (config) → `$COLUMNS` → `tput cols` → `80`. If wrapping happens too early or too late, pin it explicitly in `.statusline.conf`:
+Width comes from `$COLUMNS`, which Claude Code sets to the terminal's width before each run. Claude Code also indents the status line, adds your `statusLine.padding`, and shows notifications at the right end of the same row, so rows are packed a few columns short of the edge (4 by default, plus your padding). Without that margin a row that "fits" spills over and the terminal breaks it mid-segment. Tune it, or pin the width exactly, in `.statusline.conf`:
 
 ```
-COLS=160
+WRAP_MARGIN=6   # columns kept free at the right edge (default 4)
+COLS=160        # fixed width; skips the margin
 ```
+
+### Refresh
+
+Claude Code re-runs the status line on events: a new message, `/compact`, a permission-mode change. While it's idle, nothing changes on screen, so a countdown or a "working 43s" timer would freeze. The installer sets `statusLine.refreshInterval` to 5 seconds so time-based segments keep moving; a render takes about 150 ms. Change or remove it in your Claude Code `settings.json`.
+
+### Data from Claude Code
+
+Recent Claude Code versions send the session name, duration, cost estimate, open PR with its review state, and prompt-cache stats with every render. The status line uses those directly and only falls back to reading the session transcript or calling `gh` on versions that don't send them.
 
 ## Install
 
@@ -183,6 +193,17 @@ ACCOUNT_WORK_DOMAINS=example.com,example.org
 
 A login outside those domains renders red with ⚠️. No network calls.
 
+## Subagent rows
+
+`/statusline-subagents` replaces Claude Code's default row in the agent panel below the prompt with one that shows what each subagent is doing and what it costs:
+
+```
+● Explore · Reading the PR template… · sonnet high · 1m12s · 48k (24%) ▂▃▆█▇▅
+✓ reviewer · Review diff · opus · 6m40s · 1.5M
+```
+
+The mark is the status (`●` running, `✓` done, `✗` failed, `■` stopped). After the task come the model and effort, elapsed time, tokens with the share of the subagent's context window, and a sparkline of its token use over the last few refreshes, so a subagent that's stuck or burning through context stands out. The task text is trimmed to fit the row. It sets `subagentStatusLine` in your Claude Code `settings.json`; running the command again removes it.
+
 ## Handoffs
 
 Some setups let one session hand a task to another, for example a session on a personal subscription asking a helper session on a company account to look something up in tools only that account can reach. The handoff segment shows that traffic so you can see which account is doing the work.
@@ -226,7 +247,7 @@ All three are pure local reads — no network calls. Token speed and session dur
 
 ## Slash commands
 
-Twenty-nine Claude Code slash commands are available after install:
+Thirty-one Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
@@ -248,6 +269,8 @@ Twenty-nine Claude Code slash commands are available after install:
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
 | `/statusline-cwd` | Toggles the fish-style abbreviated path on row 1, alongside the repo segment. Off by default. |
+| `/statusline-cache` | Toggles the prompt-cache segment. Pass `on`/`off` to set directly. |
+| `/statusline-subagents` | Turns the custom subagent rows on or off. Pass `on`/`off` to set directly. |
 | `/statusline-handoff` | Toggles the handoff segment (on by default, hidden until used). Pass `on`/`off` to set directly. |
 | `/statusline-account` | Toggles the account badge (plan + email domain). Pass `on`/`off` to set directly. |
 | `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |

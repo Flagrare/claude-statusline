@@ -39,6 +39,8 @@ SHOW_GOAL="true"
 SHOW_LOOP="true"
 SHOW_ACCOUNT="false"
 SHOW_HANDOFF="true"
+SHOW_CACHE="false"
+WRAP_MARGIN=""
 ACCOUNT_WORK_DOMAINS=""
 AI_TITLE_MAX_CHARS="40"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
@@ -91,6 +93,7 @@ case "$ICONS" in
     ICON_DAILY=$'\xef\x82\x80'        # nf-fa-bar_chart       (U+F080)
     ICON_ACCOUNT=$'\xef\x80\x87'      # nf-fa-user            (U+F007)
     ICON_HANDOFF=$'\xef\x83\xac'      # nf-fa-exchange        (U+F0EC)
+    ICON_CACHE=$'\xef\x87\x80'        # nf-fa-database        (U+F1C0)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -115,6 +118,7 @@ case "$ICONS" in
     ICON_DAILY="Σ"       # U+03A3 GREEK CAPITAL SIGMA — day's running sum
     ICON_ACCOUNT="◈"     # U+25C8 WHITE DIAMOND CONTAINING BLACK SMALL DIAMOND: who's billed
     ICON_HANDOFF="⇄"     # U+21C4 RIGHTWARDS ARROW OVER LEFTWARDS ARROW: work handed to another session
+    ICON_CACHE="◫"       # U+25EB WHITE SQUARE WITH VERTICAL BISECTING LINE: cached prefix
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -139,6 +143,7 @@ case "$ICONS" in
     ICON_DAILY="[day]"
     ICON_ACCOUNT="[acct]"
     ICON_HANDOFF="<->"
+    ICON_CACHE="[cache]"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -163,26 +168,40 @@ case "$ICONS" in
     ICON_DAILY="📊"
     ICON_ACCOUNT="👤"
     ICON_HANDOFF="🔀"
+    ICON_CACHE="🧊"
     ;;
 esac
 
-# Parse all values upfront in a single jq call to avoid repeated parsing
+# Parse all values upfront in a single jq call to avoid repeated parsing.
+# Every value is forced to a string with control characters removed before
+# @sh, so nothing in the input can add shell words or terminal escapes.
 eval "$(echo "$input" | jq -r '
-  @sh "model=\(.model.display_name // "unknown")",
-  @sh "used_pct_raw=\(.context_window.used_percentage // "")",
-  @sh "effort_level=\(.effort.level // "")",
-  @sh "five_pct=\(.rate_limits.five_hour.used_percentage // "")",
-  @sh "five_resets=\(.rate_limits.five_hour.resets_at // "")",
-  @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
-  @sh "seven_resets=\(.rate_limits.seven_day.resets_at // "")",
-  @sh "cwd=\(.cwd // "")",
-  @sh "transcript_path=\(.transcript_path // "")",
-  @sh "output_style=\(.output_style.name // .output_style // .outputStyle.name // .outputStyle // "")",
-  @sh "session_id=\(.session_id // .sessionId // "")",
-  @sh "cc_version=\(.version // "")",
-  @sh "fast_mode=\(.fast_mode // false)",
-  @sh "exceeds_200k=\(.exceeds_200k_tokens // false)",
-  @sh "ctx_tokens=\(.context_window.total_input_tokens // "")"
+  def txt: if . == null then "" else tostring | gsub("[\u0000-\u001f\u007f]"; " ") end;
+  @sh "model=\((.model.display_name // "unknown") | txt)",
+  @sh "used_pct_raw=\(.context_window.used_percentage | txt)",
+  @sh "effort_level=\(.effort.level | txt)",
+  @sh "five_pct=\(.rate_limits.five_hour.used_percentage | txt)",
+  @sh "five_resets=\(.rate_limits.five_hour.resets_at | txt)",
+  @sh "seven_pct=\(.rate_limits.seven_day.used_percentage | txt)",
+  @sh "seven_resets=\(.rate_limits.seven_day.resets_at | txt)",
+  @sh "cwd=\((.workspace.current_dir // .cwd) | txt)",
+  @sh "transcript_path=\(.transcript_path | txt)",
+  @sh "output_style=\((.output_style.name // .output_style // .outputStyle.name // .outputStyle) | txt)",
+  @sh "session_id=\((.session_id // .sessionId) | txt)",
+  @sh "session_name=\(.session_name | txt)",
+  @sh "cc_version=\(.version | txt)",
+  @sh "fast_mode=\((.fast_mode // false) | txt)",
+  @sh "exceeds_200k=\((.exceeds_200k_tokens // false) | txt)",
+  @sh "ctx_tokens=\(.context_window.total_input_tokens | txt)",
+  @sh "cost_usd=\(.cost.total_cost_usd | txt)",
+  @sh "duration_ms=\(.cost.total_duration_ms | txt)",
+  @sh "pr_number=\(.pr.number | txt)",
+  @sh "pr_url=\(.pr.url | txt)",
+  @sh "pr_review=\(.pr.review_state | txt)",
+  @sh "cache_hit=\(.prompt_cache.hit_ratio | txt)",
+  @sh "cache_warm=\(.prompt_cache.warm | txt)",
+  @sh "cache_expires=\(.prompt_cache.expires_at | txt)",
+  @sh "cache_seen=\(.prompt_cache.caching_observed | txt)"
 ' 2>/dev/null)" 2>/dev/null || true
 
 # --- context progress bar ---
@@ -760,7 +779,23 @@ if [ -n "$cwd" ]; then
     # PR link (opt-in, cache-only background refresh)
     pr_seg=""
     if [ "$SHOW_PR" = "true" ]; then
-      pr_seg=$(pr_link_segment "$git_root" "$branch")
+      if [ -n "$pr_number" ]; then
+        # Claude Code sends the open PR for the branch (same as its footer
+        # badge), with review state: no gh call needed.
+        case "$pr_review" in
+          approved)          pr_color="$CLR_GREEN";  pr_mark=" ✓" ;;
+          changes_requested) pr_color="$CLR_RED";    pr_mark=" ✗" ;;
+          draft)             pr_color="$CLR_GRAY";   pr_mark=" draft" ;;
+          *)                 pr_color="$CLR_YELLOW"; pr_mark="" ;;
+        esac
+        if [ -n "$pr_url" ]; then
+          pr_seg=$(printf "  %s\033]8;;%s\007PR#%s%s\033]8;;\007%s" "$pr_color" "$pr_url" "$pr_number" "$pr_mark" "$CLR_RESET")
+        else
+          pr_seg="  ${pr_color}PR#${pr_number}${pr_mark}${CLR_RESET}"
+        fi
+      else
+        pr_seg=$(pr_link_segment "$git_root" "$branch")
+      fi
     fi
 
     git_info="${repo_icon} ${repo}  ${ICON_BRANCH} ${branch}${dirty_seg}${stat_seg}${sync_seg}${pr_seg}"
@@ -769,7 +804,10 @@ fi
 
 # --- session cost (opt-in: set SHOW_COST=true in .statusline.conf) ---
 cost_seg=""
-if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null; then
+if [ "$SHOW_COST" = "true" ] && [ -n "$cost_usd" ]; then
+  # Claude Code's own estimate (list price, or your modelPricing table).
+  cost_seg=$(awk -v c="$cost_usd" 'BEGIN { if (c + 0 < 0.001) exit; if (c + 0 < 1) printf "$%.3f", c; else printf "$%.2f", c }')
+elif [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null; then
   session_file=$(discover_session_file "${cwd:-$PWD}")
   if [ -f "$session_file" ]; then
     cost_seg=$(awk '
@@ -824,7 +862,7 @@ if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || 
     # last 200 lines cover the most recent turns for token-speed pairing,
     # last ai-title, latest goal_status, and currently-active CronCreate IDs.
     load_jsonl_signals "$jsonl_file"
-    if [ "$SHOW_SESSION_DURATION" = "true" ]; then
+    if [ "$SHOW_SESSION_DURATION" = "true" ] && [ -z "$duration_ms" ]; then
       session_dur_seg=$(session_duration_segment "$JSONL_FIRST_TS")
     fi
     if [ "$SHOW_TOKEN_SPEED" = "true" ]; then
@@ -833,7 +871,7 @@ if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || 
     if [ "$SHOW_COMPACTION" = "true" ]; then
       compaction_seg=$(compaction_segment "$used_pct_raw" "$(basename "$jsonl_file" .jsonl)")
     fi
-    if [ "$SHOW_AI_TITLE" = "true" ] && [ -n "$JSONL_AI_TITLE" ]; then
+    if [ "$SHOW_AI_TITLE" = "true" ] && [ -z "$session_name" ] && [ -n "$JSONL_AI_TITLE" ]; then
       max=${AI_TITLE_MAX_CHARS%%.*}
       case "$max" in ''|*[!0-9]*|0) max=40 ;; esac
       title=$JSONL_AI_TITLE
@@ -862,6 +900,37 @@ if [ "$SHOW_SESSION_DURATION" = "true" ] || [ "$SHOW_TOKEN_SPEED" = "true" ] || 
       fi
     fi
   fi
+fi
+
+# Built-in session data: duration and name straight from Claude Code (newer
+# versions), so these don't need the transcript at all.
+if [ "$SHOW_SESSION_DURATION" = "true" ] && [ -n "$duration_ms" ]; then
+  dur_s=$(( ${duration_ms%%.*} / 1000 ))
+  [ "$dur_s" -gt 0 ] 2>/dev/null && session_dur_seg="${ICON_CLOCK} ${CLR_DIM}$(format_countdown "$dur_s" "short")${CLR_RESET}"
+fi
+if [ "$SHOW_AI_TITLE" = "true" ] && [ -n "$session_name" ]; then
+  max=${AI_TITLE_MAX_CHARS%%.*}
+  case "$max" in ''|*[!0-9]*|0) max=40 ;; esac
+  title=$session_name
+  [ ${#title} -gt "$max" ] && title="${title:0:$((max-1))}…"
+  ai_title_seg="${ICON_TITLE} ${CLR_DIM}${title}${CLR_RESET}"
+fi
+
+# Prompt cache (opt-in): hit ratio, and while the cache is warm, how long
+# until it goes cold. A cold cache means the next turn re-reads everything.
+cache_seg=""
+if [ "$SHOW_CACHE" = "true" ] && [ "$cache_seen" = "true" ]; then
+  hit=""
+  [ -n "$cache_hit" ] && hit=$(awk -v h="$cache_hit" 'BEGIN { printf "%d%%", h * 100 + 0.5 }')
+  if [ "$cache_warm" = "true" ] && [ -n "$cache_expires" ]; then
+    left=$(( ${cache_expires%%.*} - $(date +%s) ))
+    if [ "$left" -gt 0 ] 2>/dev/null; then
+      c_color="$CLR_GREEN"; [ "$left" -lt 60 ] && c_color="$CLR_YELLOW"
+      if [ "$left" -lt 60 ]; then left_txt="${left}s"; else left_txt="$(( left / 60 ))m"; fi
+      cache_seg="${c_color}${ICON_CACHE} ${hit}${CLR_RESET}${CLR_DIM} · warm ${left_txt}${CLR_RESET}"
+    fi
+  fi
+  [ -z "$cache_seg" ] && cache_seg="${CLR_DIM}${ICON_CACHE} ${hit:+$hit · }cold${CLR_RESET}"
 fi
 
 # --- status-JSON & poller bycatch segments ---
@@ -1094,7 +1163,7 @@ disp_width() {
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊" "👤" "🔀"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊" "👤" "🔀" "🧊"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -1112,6 +1181,18 @@ for w in "$COLS" "$COLUMNS" "$(tput cols 2>/dev/null)"; do
   if valid_width "$w"; then term_width="$w"; break; fi
 done
 [ -z "$term_width" ] && term_width=80
+# COLUMNS is the whole terminal, but Claude Code indents the status line, adds
+# any statusLine.padding, and shows notifications at the right end of the same
+# row. Packing rows to the full width makes the terminal hard-wrap them
+# mid-segment, so keep a margin unless COLS pins the width exactly.
+if [ -z "$COLS" ]; then
+  margin=${WRAP_MARGIN%%.*}
+  case "$margin" in ''|*[!0-9]*) margin=4 ;; esac
+  pad=$(jq -r '.statusLine.padding // 0 | floor' "$CLAUDE_DIR/settings.json" 2>/dev/null)
+  case "$pad" in ''|*[!0-9]*) pad=0 ;; esac
+  term_width=$(( term_width - margin - pad ))
+  [ "$term_width" -lt 40 ] && term_width=40
+fi
 
 # Pack non-empty segments into physical lines no wider than $1 columns, breaking
 # at divider boundaries. A row too wide for the terminal wraps onto extra lines
@@ -1147,7 +1228,7 @@ wrap_segs() {
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-row1=$(wrap_segs "$term_width" "$account_seg" "$handoff_seg" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
+row1=$(wrap_segs "$term_width" "$account_seg" "$handoff_seg" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$cache_seg" "$ctx_warn_seg")
 row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$daily_tokens_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then

@@ -14,13 +14,14 @@ settings_path = sys.argv[1]
 with open(settings_path) as f:
     data = json.load(f)
 data.pop("statusLine", None)
+data.pop("subagentStatusLine", None)
 with open(settings_path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 PYEOF
   elif command -v jq &>/dev/null; then
     tmp=$(mktemp)
-    jq 'del(.statusLine)' "$SETTINGS" > "$tmp"
+    jq 'del(.statusLine, .subagentStatusLine)' "$SETTINGS" > "$tmp"
     mv "$tmp" "$SETTINGS"
   else
     echo "Error: python3 or jq is required."
@@ -50,6 +51,8 @@ rm -f "$COMMANDS_DIR/statusline-cwd.md"
 rm -f "$COMMANDS_DIR/statusline-extra-usage.md"
 rm -f "$COMMANDS_DIR/statusline-account.md"
 rm -f "$COMMANDS_DIR/statusline-handoff.md"
+rm -f "$COMMANDS_DIR/statusline-cache.md"
+rm -f "$COMMANDS_DIR/statusline-subagents.md"
 echo "Removed slash commands."
 
 rm -rf "$INSTALL_DIR"

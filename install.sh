@@ -172,6 +172,7 @@ SHOW_CWD=false
 SHOW_EXTRA_USAGE=false
 SHOW_ACCOUNT=false
 SHOW_HANDOFF=true
+SHOW_CACHE=false
 SHOW_FAST_MODE=true
 SHOW_CONTEXT_WARNING=true
 CONTEXT_WARNING_TOKENS=200000
@@ -192,14 +193,17 @@ import json, sys
 settings_path, script_path = sys.argv[1], sys.argv[2]
 with open(settings_path) as f:
     data = json.load(f)
-data["statusLine"] = {"type": "command", "command": script_path}
+sl = data.get("statusLine") if isinstance(data.get("statusLine"), dict) else {}
+sl.update({"type": "command", "command": script_path})
+sl.setdefault("refreshInterval", 5)  # keeps timers (handoff, cache, resets) ticking while idle
+data["statusLine"] = sl
 with open(settings_path, "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 PYEOF
 elif command -v jq &>/dev/null; then
   tmp=$(mktemp)
-  jq --arg cmd "$INSTALL_DIR/statusline.sh" '. + {statusLine: {type: "command", command: $cmd}}' "$SETTINGS" > "$tmp"
+  jq --arg cmd "$INSTALL_DIR/statusline.sh" '.statusLine = ((.statusLine // {}) + {type: "command", command: $cmd}) | .statusLine.refreshInterval //= 5' "$SETTINGS" > "$tmp"
   mv "$tmp" "$SETTINGS"
 fi
 
