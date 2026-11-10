@@ -8,21 +8,53 @@
 # token Claude Code itself stores: macOS keychain ("Claude Code-credentials")
 # or ~/.claude/.credentials.json on Linux.
 #
+# With CLAUDE_CONFIG_DIR set, Claude Code keeps that profile's login apart: the
+# keychain entry gets a suffix (first 8 hex chars of the SHA-256 of the
+# directory path) and the credentials file lives inside the directory. The
+# cache lives there too, so each profile shows its own account's usage. If the
+# profile's token can't be found, nothing is fetched: falling back to the
+# default login would show another account's numbers.
+#
 # This is the same endpoint Claude Code's /usage command uses internally.
 
-CACHE_FILE="$HOME/.claude/.statusline-usage-cache.json"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CLAUDE_DIR="${CLAUDE_DIR%/}"
+CACHE_FILE="$CLAUDE_DIR/.statusline-usage-cache.json"
 ENDPOINT="https://api.anthropic.com/api/oauth/usage"
 
 command -v jq &>/dev/null || exit 0
 command -v curl &>/dev/null || exit 0
 
-get_token() {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    security find-generic-password -s "Claude Code-credentials" -a "$USER" -w 2>/dev/null \
-      | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null
-  else
-    jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null
+sha8() {
+  if command -v shasum &>/dev/null; then printf "%s" "$1" | shasum -a 256 | cut -c1-8
+  else printf "%s" "$1" | sha256sum | cut -c1-8; fi
+}
+
+# Keychain service names to try for this profile, most likely first.
+keychain_services() {
+  if [ -z "${CLAUDE_CONFIG_DIR:-}" ]; then
+    echo "Claude Code-credentials"
+    return
   fi
+  local raw="$CLAUDE_CONFIG_DIR" resolved
+  echo "Claude Code-credentials-$(sha8 "$raw")"
+  resolved=$(cd "$raw" 2>/dev/null && pwd -P)
+  [ -n "$resolved" ] && [ "$resolved" != "$raw" ] && echo "Claude Code-credentials-$(sha8 "$resolved")"
+  [ "${raw%/}" != "$raw" ] && echo "Claude Code-credentials-$(sha8 "${raw%/}")"
+}
+
+get_token() {
+  local svc tok
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    while IFS= read -r svc; do
+      tok=$(security find-generic-password -s "$svc" -a "$USER" -w 2>/dev/null \
+        | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+      [ -n "$tok" ] && { printf "%s" "$tok"; return; }
+    done < <(keychain_services)
+  fi
+  # Linux, and macOS when the keychain write failed (Claude Code falls back to
+  # the file then).
+  jq -r '.claudeAiOauth.accessToken // empty' "$CLAUDE_DIR/.credentials.json" 2>/dev/null
 }
 
 token=$(get_token)

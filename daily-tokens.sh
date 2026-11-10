@@ -17,8 +17,10 @@
 
 export LC_ALL=C   # byte-oriented grep/awk; much faster on long lines
 
-PROJECTS_DIR="$HOME/.claude/projects"
-STATE_FILE="$HOME/.claude/.statusline-state/daily-tokens"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CLAUDE_DIR="${CLAUDE_DIR%/}"
+PROJECTS_DIR="$CLAUDE_DIR/projects"
+STATE_FILE="$CLAUDE_DIR/.statusline-state/daily-tokens"
 LOCK_DIR="${STATE_FILE}.lock"
 
 [ -d "$PROJECTS_DIR" ] || exit 0

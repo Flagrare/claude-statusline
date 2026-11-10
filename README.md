@@ -182,6 +182,12 @@ ACCOUNT_WORK_DOMAINS=example.com,example.org
 
 A login outside those domains renders red with ⚠️. No network calls.
 
+## Multiple profiles (`CLAUDE_CONFIG_DIR`)
+
+If you run Claude Code with more than one config directory, such as `alias claude-work='CLAUDE_CONFIG_DIR=~/.claude-work claude'`, each profile's status line reads only its own directory: the session transcript, the per-model usage cache, the tokens-today total, and the account badge. The per-model usage poller uses that profile's login (on macOS, the keychain entry Claude Code keys to the directory). When it can't find that login, it shows nothing instead of another account's numbers.
+
+The 5h and 7d limits come from Claude Code itself, which sends them only for Pro, Max, and Ultra plans. On a Team or Enterprise seat, either one can be missing, and the status line shows whatever Claude Code sends.
+
 ## JSONL signals (opt-in)
 
 Three extra segments are derived from the current session's transcript JSONL under `~/.claude/projects/<encoded-cwd>/`. All three default to off and have their own toggle.

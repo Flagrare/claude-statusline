@@ -7,6 +7,12 @@ if ! command -v jq &>/dev/null; then
   exit 0
 fi
 
+# Claude Code keeps settings, transcripts and logins in CLAUDE_CONFIG_DIR when
+# it is set (one directory per account/profile), else ~/.claude. Everything this
+# script reads or caches per account lives under it, so two profiles never mix.
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CLAUDE_DIR="${CLAUDE_DIR%/}"
+
 # Load icon config (written by install.sh)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ICONS="emoji"
@@ -165,6 +171,7 @@ eval "$(echo "$input" | jq -r '
   @sh "seven_pct=\(.rate_limits.seven_day.used_percentage // "")",
   @sh "seven_resets=\(.rate_limits.seven_day.resets_at // "")",
   @sh "cwd=\(.cwd // "")",
+  @sh "transcript_path=\(.transcript_path // "")",
   @sh "output_style=\(.output_style.name // .output_style // .outputStyle.name // .outputStyle // "")",
   @sh "session_id=\(.session_id // .sessionId // "")",
   @sh "cc_version=\(.version // "")",
@@ -263,7 +270,7 @@ effort_display() {
 }
 
 if [ -z "$effort_level" ]; then
-  effort_level=$(jq -r '.effortLevel // empty' ~/.claude/settings.json 2>/dev/null)
+  effort_level=$(jq -r '.effortLevel // empty' "$CLAUDE_DIR/settings.json" 2>/dev/null)
 fi
 effort_seg=""
 if [ -n "$effort_level" ]; then
@@ -324,15 +331,20 @@ iso_to_epoch() {
 }
 
 # --- JSONL session-derived signals ---
-# Locate the active session's JSONL file. Claude Code encodes the cwd by
-# replacing non-alphanumeric chars with '-' under ~/.claude/projects/.
+# Locate the active session's JSONL file. Claude Code passes it as
+# transcript_path; older versions don't, so fall back to the newest log in the
+# project dir (cwd with non-alphanumeric chars replaced by '-').
 discover_session_file() {
   local target_cwd=$1
+  if [ -n "$transcript_path" ] && [ -f "$transcript_path" ]; then
+    printf "%s" "$transcript_path"
+    return
+  fi
   [ -z "$target_cwd" ] && return
-  [ ! -d "$HOME/.claude/projects" ] && return
+  [ ! -d "$CLAUDE_DIR/projects" ] && return
   local key dir
   key=$(printf "%s" "$target_cwd" | sed 's|[^a-zA-Z0-9-]|-|g')
-  dir="$HOME/.claude/projects/${key}"
+  dir="$CLAUDE_DIR/projects/${key}"
   ls -t "${dir}"/*.jsonl 2>/dev/null | head -1
 }
 
@@ -481,11 +493,11 @@ token_speed_segment() {
 
 # Compaction counter: persists last-seen context % per session. On a drop >2pp
 # from a non-trivial baseline, treats it as a compaction event and increments.
-# State at ~/.claude/.statusline-state/compaction-{session-id}.json.
+# State at $CLAUDE_DIR/.statusline-state/compaction-{session-id}.json.
 compaction_segment() {
   local current_pct=$1 session_id=$2
   [ -z "$current_pct" ] || [ -z "$session_id" ] && return
-  local state_dir="$HOME/.claude/.statusline-state"
+  local state_dir="$CLAUDE_DIR/.statusline-state"
   mkdir -p "$state_dir" 2>/dev/null || return
   local state_file="$state_dir/compaction-${session_id}.json"
   local last_pct=0 count=0
@@ -532,7 +544,7 @@ pr_link_segment() {
   local target=$1 branch=$2
   command -v gh >/dev/null 2>&1 || return
   [ -z "$branch" ] && return
-  local state_dir="$HOME/.claude/.statusline-state"
+  local state_dir="$CLAUDE_DIR/.statusline-state"
   mkdir -p "$state_dir" 2>/dev/null || return
   # Sanitize branch (may contain `/`) and combine with repo basename for a unique key.
   local repo_base safe_branch cache_file
@@ -610,7 +622,7 @@ cwd_abbrev_segment() {
 # when extra_usage is enabled AND has a utilization number. Format:
 # "+$<credits> (<util>%)" — colored by utilization via rate_color.
 extra_usage_segment() {
-  local cache="$HOME/.claude/.statusline-usage-cache.json"
+  local cache="$CLAUDE_DIR/.statusline-usage-cache.json"
   [ -f "$cache" ] || return
   local enabled util credits cur
   eval "$(jq -r '
@@ -641,7 +653,7 @@ week_limit=$(format_rate_segment "7d" "$seven_pct" "$seven_resets" 604800 "long"
 # --- per-model weekly limits (opt-in; from background-polled cache) ---
 model_limit_segs=()
 if [ "$SHOW_MODEL_USAGE" = "true" ]; then
-  CACHE_FILE="$HOME/.claude/.statusline-usage-cache.json"
+  CACHE_FILE="$CLAUDE_DIR/.statusline-usage-cache.json"
   POLLER="$SCRIPT_DIR/usage-poller.sh"
 
   # Refresh in background when cache is missing or stale (>5 min). The current
@@ -752,11 +764,8 @@ fi
 
 # --- session cost (opt-in: set SHOW_COST=true in .statusline.conf) ---
 cost_seg=""
-if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null && [ -d "$HOME/.claude/projects" ]; then
-  # Derive project dir: Claude encodes cwd by replacing non-alphanumeric chars with -
-  project_key=$(printf "%s" "${cwd:-$PWD}" | sed 's|[^a-zA-Z0-9-]|-|g')
-  project_dir="$HOME/.claude/projects/${project_key}"
-  session_file=$(ls -t "${project_dir}"/*.jsonl 2>/dev/null | head -1)
+if [ "$SHOW_COST" = "true" ] && command -v awk &>/dev/null; then
+  session_file=$(discover_session_file "${cwd:-$PWD}")
   if [ -f "$session_file" ]; then
     cost_seg=$(awk '
       function extract_num(line, key,    i, rest) {
@@ -921,7 +930,7 @@ fi
 # most once a minute. Counts input + output + cache writes + cache reads.
 daily_tokens_seg=""
 if [ "$SHOW_DAILY_TOKENS" = "true" ]; then
-  DAILY_STATE="$HOME/.claude/.statusline-state/daily-tokens"
+  DAILY_STATE="$CLAUDE_DIR/.statusline-state/daily-tokens"
   daily_mtime=0
   [ -f "$DAILY_STATE" ] && daily_mtime=$(stat -f %m "$DAILY_STATE" 2>/dev/null || stat -c %Y "$DAILY_STATE" 2>/dev/null || echo 0)
   if [ $(( $(date +%s) - daily_mtime )) -ge 60 ] && [ -x "$SCRIPT_DIR/daily-tokens.sh" ]; then
@@ -958,8 +967,13 @@ account_segment() {
     printf "%s" "${CLR_BLUE}${ICON_ACCOUNT} ${provider}${CLR_RESET}"
     return
   fi
-  acct_file="$HOME/.claude.json"
-  [ -n "${CLAUDE_CONFIG_DIR:-}" ] && [ -f "$CLAUDE_CONFIG_DIR/.claude.json" ] && acct_file="$CLAUDE_CONFIG_DIR/.claude.json"
+  # With CLAUDE_CONFIG_DIR set, only that profile's file counts: falling back
+  # to ~/.claude.json would label the session with another account.
+  if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    acct_file="$CLAUDE_DIR/.claude.json"
+  else
+    acct_file="$HOME/.claude.json"
+  fi
   [ -f "$acct_file" ] || return
   eval "$(jq -r '
     @sh "plan=\(.oauthAccount.planDisplayName // "")",
