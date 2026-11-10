@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.16.1: 2026-11-10
+
+### Fixes
+
+- **Handoff and account segments**: a malformed handoff file or `.claude.json` could make the status line run a shell command or print terminal escape codes. Every value is now read as plain text before it's shown.
+
+---
+
 ## v2.16.0: 2026-11-10
 
 See when a session hands work to another one, and how it went.
