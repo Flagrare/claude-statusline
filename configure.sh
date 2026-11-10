@@ -20,17 +20,17 @@ keys=(  SHOW_GIT_DIFF_STATS SHOW_PR SHOW_WORKTREE SHOW_CONFLICTS \
         SHOW_MODEL_USAGE SHOW_OUTPUT_STYLE SHOW_SESSION_ID SHOW_VERSION \
         SHOW_CWD SHOW_SESSION_DURATION SHOW_TOKEN_SPEED SHOW_COMPACTION \
         SHOW_EXTRA_USAGE SHOW_COST SHOW_DAILY_TOKENS SHOW_FAST_MODE SHOW_CONTEXT_WARNING \
-        SHOW_AI_TITLE SHOW_GOAL SHOW_LOOP SHOW_ACCOUNT )
+        SHOW_AI_TITLE SHOW_GOAL SHOW_LOOP SHOW_ACCOUNT SHOW_HANDOFF )
 labels=("Git diff stats (+N -N)" "PR link" "Worktree marker" "Merge-conflicts marker" \
         "Per-model weekly usage (Fable, etc.)" "Output-style label" "Session ID" "Claude Code version badge" \
         "CWD path" "Session duration" "Token speed" "Compaction counter" \
         "Extra usage (overage)" "Session cost" "Tokens used today" "Fast-mode badge" "Context warning" \
-        "AI session title" "/goal indicator" "/loop indicator" "Account badge (plan + email domain)" )
+        "AI session title" "/goal indicator" "/loop indicator" "Account badge (plan + email domain)" "Handoff to another session" )
 defs=(  false false true true \
         false false false false \
         false false false false \
         false false false true true \
-        false true true false )
+        false true true false true )
 
 conf_val() { grep "^$1=" "$CONF" 2>/dev/null | tail -1 | cut -d= -f2; }
 

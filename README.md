@@ -23,6 +23,7 @@ Emoji mode:
 | Segment | What you see |
 |---------|-------------|
 | 👤 Account | **Opt-in**: which login this session bills to: plan and email domain (`👤 Max · example.com`). Orange for individual plans, blue for Team/Enterprise or a cloud provider, red with ⚠️ when the domain isn't in `ACCOUNT_WORK_DOMAINS`. Follows a mid-session `/login`. Enable with `/statusline-account`, see [Account badge](#account-badge-opt-in) below. |
+| 🔀 Handoff | Work this session handed to another session, such as a helper on a second account: `🔀 Enterprise: working 1m05s` while it runs, `🔀 Enterprise ×3 · 4m ago` afterwards, red when it fails. Hidden until used. **On by default**; toggle with `/statusline-handoff`. See [Handoffs](#handoffs) below. |
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
 | ⚡ Fast mode | A `⚡ fast` badge on the top row while Claude Code's Fast mode is active. Auto-hides otherwise. **On by default** — toggle with `/statusline-fast-mode`. |
@@ -182,6 +183,29 @@ ACCOUNT_WORK_DOMAINS=example.com,example.org
 
 A login outside those domains renders red with ⚠️. No network calls.
 
+## Handoffs
+
+Some setups let one session hand a task to another, for example a session on a personal subscription asking a helper session on a company account to look something up in tools only that account can reach. The handoff segment shows that traffic so you can see which account is doing the work.
+
+The status line doesn't run handoffs itself. Whatever runs them (an MCP server, a script, a hook) writes one JSON file per calling session:
+
+```
+$CLAUDE_DIR/.statusline-state/handoff-<session_id>.json
+```
+
+`$CLAUDE_DIR` is `CLAUDE_CONFIG_DIR` when set, else `~/.claude`. `<session_id>` is the calling session's ID (Claude Code passes it to child processes as `CLAUDE_CODE_SESSION_ID`). Fields, all optional:
+
+| Field | Meaning |
+|---|---|
+| `label` | Who the work went to, e.g. `Enterprise` |
+| `status` | `working`, `idle`, or `error` |
+| `task` | Short description of the current task |
+| `started_at`, `finished_at` | Unix epoch seconds |
+| `calls` | Tasks completed in this session |
+| `error` | Reason for the last failure |
+
+Write the file atomically (write a temp file, then rename) so a render never reads half of it.
+
 ## Multiple profiles (`CLAUDE_CONFIG_DIR`)
 
 If you run Claude Code with more than one config directory, such as `alias claude-work='CLAUDE_CONFIG_DIR=~/.claude-work claude'`, each profile's status line reads only its own directory: the session transcript, the per-model usage cache, the tokens-today total, and the account badge. The per-model usage poller uses that profile's login (on macOS, the keychain entry Claude Code keys to the directory). When it can't find that login, it shows nothing instead of another account's numbers.
@@ -202,7 +226,7 @@ All three are pure local reads — no network calls. Token speed and session dur
 
 ## Slash commands
 
-Twenty-eight Claude Code slash commands are available after install:
+Twenty-nine Claude Code slash commands are available after install:
 
 | Command | What it does |
 |---------|-------------|
@@ -224,6 +248,7 @@ Twenty-eight Claude Code slash commands are available after install:
 | `/statusline-session-id` | Toggles the trailing 6-char session ID. Off by default. |
 | `/statusline-claude-version` | Toggles the trailing Claude Code (host app) version badge. Off by default. |
 | `/statusline-cwd` | Toggles the fish-style abbreviated path on row 1, alongside the repo segment. Off by default. |
+| `/statusline-handoff` | Toggles the handoff segment (on by default, hidden until used). Pass `on`/`off` to set directly. |
 | `/statusline-account` | Toggles the account badge (plan + email domain). Pass `on`/`off` to set directly. |
 | `/statusline-extra-usage` | Toggles the pay-as-you-go overage segment. Off by default; auto-hides when not enabled on your account. |
 | `/statusline-goal` | Toggles the `/goal` indicator on row 1. **On by default**; segment is silent unless a goal is active. |

@@ -38,6 +38,7 @@ SHOW_AI_TITLE="false"
 SHOW_GOAL="true"
 SHOW_LOOP="true"
 SHOW_ACCOUNT="false"
+SHOW_HANDOFF="true"
 ACCOUNT_WORK_DOMAINS=""
 AI_TITLE_MAX_CHARS="40"
 if [ -f "$SCRIPT_DIR/.statusline.conf" ]; then
@@ -89,6 +90,7 @@ case "$ICONS" in
     ICON_MODEL_QUOTA=$'\xef\x80\xad'  # nf-fa-book            (U+F02D)
     ICON_DAILY=$'\xef\x82\x80'        # nf-fa-bar_chart       (U+F080)
     ICON_ACCOUNT=$'\xef\x80\x87'      # nf-fa-user            (U+F007)
+    ICON_HANDOFF=$'\xef\x83\xac'      # nf-fa-exchange        (U+F0EC)
     ;;
   unicode)
     ICON_FIRE="≫"     # U+226B MUCH GREATER-THAN — burn rate exceeds expected
@@ -112,6 +114,7 @@ case "$ICONS" in
     ICON_MODEL_QUOTA="¶" # U+00B6 PILCROW            — per-model (Fable) quota
     ICON_DAILY="Σ"       # U+03A3 GREEK CAPITAL SIGMA — day's running sum
     ICON_ACCOUNT="◈"     # U+25C8 WHITE DIAMOND CONTAINING BLACK SMALL DIAMOND: who's billed
+    ICON_HANDOFF="⇄"     # U+21C4 RIGHTWARDS ARROW OVER LEFTWARDS ARROW: work handed to another session
     ;;
   ascii)
     ICON_FIRE="!!"
@@ -135,6 +138,7 @@ case "$ICONS" in
     ICON_MODEL_QUOTA="[m]"
     ICON_DAILY="[day]"
     ICON_ACCOUNT="[acct]"
+    ICON_HANDOFF="<->"
     ;;
   *)
     ICON_FIRE="🔥"
@@ -158,6 +162,7 @@ case "$ICONS" in
     ICON_MODEL_QUOTA="📖"
     ICON_DAILY="📊"
     ICON_ACCOUNT="👤"
+    ICON_HANDOFF="🔀"
     ;;
 esac
 
@@ -1009,6 +1014,68 @@ if [ "$SHOW_ACCOUNT" = "true" ]; then
   account_seg=$(account_segment)
 fi
 
+# Handoff (on by default, hidden until used): work this session handed to
+# another session, e.g. a helper running on a second account. Any tool can
+# drive it by writing $CLAUDE_DIR/.statusline-state/handoff-<session_id>.json:
+#   {"label": "Enterprise", "status": "working"|"idle"|"error", "task": "...",
+#    "started_at": <epoch>, "finished_at": <epoch>, "calls": <n>, "error": "..."}
+# Renders "🔀 Enterprise: working 1m05s · <task>" while it runs, "🔀 Enterprise
+# ×3 · 4m ago" afterwards, and red for 15 min after a failure.
+fmt_dur() {
+  local s=$1
+  if [ "$s" -lt 60 ]; then printf "%ds" "$s"
+  elif [ "$s" -lt 3600 ]; then printf "%dm%02ds" $(( s / 60 )) $(( s % 60 ))
+  else printf "%dh%02dm" $(( s / 3600 )) $(( s % 3600 / 60 )); fi
+}
+
+handoff_segment() {
+  [ -n "$session_id" ] || return
+  local f="$CLAUDE_DIR/.statusline-state/handoff-${session_id}.json"
+  [ -f "$f" ] || return
+  local label status task started finished calls err now
+  eval "$(jq -r '
+    @sh "label=\(.label // "handoff")",
+    @sh "status=\(.status // "")",
+    @sh "task=\(.task // "" | gsub("[\\n\\r\\t]"; " "))",
+    @sh "started=\(.started_at // 0 | floor)",
+    @sh "finished=\(.finished_at // 0 | floor)",
+    @sh "calls=\(.calls // 0 | floor)",
+    @sh "err=\(.error // "" | gsub("[\\n\\r\\t]"; " "))"
+  ' "$f" 2>/dev/null)" 2>/dev/null || return
+  now=$(date +%s)
+  case "$status" in
+    working)
+      local el=$(( now - started ))
+      if [ "$started" -gt 0 ] && [ "$el" -lt 1800 ]; then
+        local t="${task:0:32}"; [ "${#task}" -gt 32 ] && t="${t}…"
+        printf "%s" "${CLR_YELLOW}${ICON_HANDOFF} ${label}: working $(fmt_dur "$el")${CLR_RESET}${t:+${CLR_DIM} · ${t}${CLR_RESET}}"
+      else
+        printf "%s" "${CLR_RED}${ICON_HANDOFF} ${label}: no answer${CLR_RESET}"
+      fi
+      return ;;
+    error)
+      if [ $(( now - finished )) -lt 900 ]; then
+        local e="${err:0:40}"; [ "${#err}" -gt 40 ] && e="${e}…"
+        printf "%s" "${CLR_RED}${ICON_HANDOFF} ${label}: failed${CLR_RESET}${e:+${CLR_DIM} · ${e}${CLR_RESET}}"
+        return
+      fi ;;
+  esac
+  [ "$calls" -gt 0 ] 2>/dev/null || return
+  local ago=""
+  if [ "$finished" -gt 0 ]; then
+    local a=$(( now - finished ))
+    if [ "$a" -lt 60 ]; then ago=" · just now"
+    elif [ "$a" -lt 3600 ]; then ago=" · $(( a / 60 ))m ago"
+    else ago=" · $(( a / 3600 ))h ago"; fi
+  fi
+  printf "%s" "${CLR_DIM}${ICON_HANDOFF} ${label} ×${calls}${ago}${CLR_RESET}"
+}
+
+handoff_seg=""
+if [ "$SHOW_HANDOFF" = "true" ]; then
+  handoff_seg=$(handoff_segment)
+fi
+
 # --- divider ---
 div="  ${CLR_DIM}│${CLR_RESET}  "
 
@@ -1021,7 +1088,7 @@ disp_width() {
   plain=$(printf "%s" "$1" | sed $'s/\033\[[0-9;]*m//g; s/\033\]8;;[^\007]*\007//g')
   count=${#plain}
   if [ "$ICONS" != "nerd" ] && [ "$ICONS" != "unicode" ] && [ "$ICONS" != "ascii" ]; then
-    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊" "👤"; do
+    for e in "🔥" "🍃" "🧠" "📂" "🌿" "⏱" "💨" "🔄" "🌳" "⚡" "🆔" "⚠" "🎯" "🔁" "📝" "📖" "📊" "👤" "🔀"; do
       t=${plain//$e/}
       count=$(( count + (${#plain} - ${#t}) / ${#e} ))
     done
@@ -1074,7 +1141,7 @@ wrap_segs() {
 ctx_seg="$ctx"
 [ -n "$compaction_seg" ] && ctx_seg="${ctx_seg} ${compaction_seg}"
 
-row1=$(wrap_segs "$term_width" "$account_seg" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
+row1=$(wrap_segs "$term_width" "$account_seg" "$handoff_seg" "$model" "$effort_seg" "$fast_seg" "$git_info" "$cwd_seg" "$goal_seg" "$loop_seg" "$limit" "$week_limit" ${model_limit_segs[@]+"${model_limit_segs[@]}"} "$ctx_seg" "$ctx_warn_seg")
 row2=$(wrap_segs "$term_width" "$token_speed_seg" "$session_dur_seg" "$ai_title_seg" "$output_style_seg" "$session_id_seg" "$version_seg" "$extra_seg" "$daily_tokens_seg" "$cost_seg")
 
 if [ -n "$row2" ]; then
