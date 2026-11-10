@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.15.1: 2026-11-10
+
+Profiles run with `CLAUDE_CONFIG_DIR` no longer show another account's numbers.
+
+### Fixes
+
+- **Per-model usage and extra usage**: in a second profile (for example `CLAUDE_CONFIG_DIR=~/.claude-work`), these showed the default login's usage. The poller now reads the profile's own login and keeps a separate cache per profile. If it can't find that login, the segments stay hidden.
+- **Session segments** (duration, token speed, compaction, AI title, goal, loop, cost): these were blank in a second profile, because they looked for the session log under `~/.claude`. They now use the transcript path Claude Code sends, and fall back to the profile's own directory.
+- **Tokens today**: counts the current profile's sessions, not always the default one's.
+- **Account badge**: in a second profile, it no longer falls back to the default login's account.
+
+---
+
 ## v2.15.0: 2026-11-10
 
 See which account a session is spending, and catch work on the wrong one.
