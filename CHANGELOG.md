@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.17.0: 2026-11-10
+
+Rows stop breaking mid-segment, timers keep moving while Claude is idle, and subagents get a useful row.
+
+### General
+
+- **Wrapping**: rows are now packed a few columns short of the terminal edge, leaving room for Claude Code's own indent, your `statusLine.padding`, and the notifications it shows on the right of the same row. Before, a row that looked like it fit could spill over and the terminal broke it in the middle of a segment. `WRAP_MARGIN` tunes the gap; `COLS` still pins an exact width.
+- **Refresh**: install and update now set `statusLine.refreshInterval` to 5 seconds, so the handoff timer, the cache countdown and the rate-limit countdowns keep ticking while Claude is idle.
+- **`/statusline-subagents`**: custom rows in the agent panel. Each subagent shows its status, what it's doing, model and effort, elapsed time, tokens with the share of its context, and a sparkline of recent token use.
+- **`/statusline-cache`**: new opt-in segment, `🧊 94% · warm 3m`: prompt-cache hit ratio and time until the cache goes cold.
+- **PR link**: shows the review state from Claude Code (`PR#42 ✓` approved, `✗` changes requested, `draft`), without a `gh` call.
+
+### Behaviour
+
+- Session name, duration and cost now come straight from Claude Code when it sends them. The title follows `/rename`, the duration counts only time the session was running, and the cost matches Claude Code's own estimate (the old fallback used outdated prices). Older Claude Code versions keep the previous behaviour.
+- Install and update now keep any other `statusLine` settings you had, such as `padding`, instead of replacing the whole block.
+- Uninstall also removes `subagentStatusLine`.
+
+---
+
 ## v2.16.1: 2026-11-10
 
 ### Fixes
