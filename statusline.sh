@@ -1089,10 +1089,10 @@ fi
 # drive it by writing $CLAUDE_DIR/.statusline-state/handoff-<session_id>.json:
 #   {"label": "Enterprise", "status": "working"|"idle"|"error", "task": "...",
 #    "started_at": <epoch>, "finished_at": <epoch>, "calls": <n>, "error": "...",
-#    "active": <tasks running at once>}
+#    "active": <tasks running at once>, "last_task": "..."}
 # Renders "🔀 Enterprise: working 1m05s · <task>" while it runs ("working ×2"
 # when several run at once, timed from the oldest), "🔀 Enterprise
-# ×3 · 4m ago" afterwards, and red for 15 min after a failure.
+# ×3 · 4m ago" afterwards (with "✓ <last_task>" for the first 5 minutes), and red for 15 min after a failure.
 fmt_dur() {
   local s=$1
   if [ "$s" -lt 60 ]; then printf "%ds" "$s"
@@ -1104,7 +1104,7 @@ handoff_segment() {
   [ -n "$session_id" ] || return
   local f="$CLAUDE_DIR/.statusline-state/handoff-${session_id}.json"
   [ -f "$f" ] || return
-  local label status task started finished calls err active now
+  local label status task started finished calls err active last now
   # Every field is forced to a string with control characters removed, so a
   # malformed file can neither inject shell words into the eval (an array
   # through @sh becomes several words) nor print terminal escape codes.
@@ -1118,7 +1118,8 @@ handoff_segment() {
     @sh "finished=\((.finished_at | num) | tostring)",
     @sh "calls=\((.calls | num) | tostring)",
     @sh "err=\((.error // "") | txt)",
-    @sh "active=\((.active | num) | tostring)"
+    @sh "active=\((.active | num) | tostring)",
+    @sh "last=\((.last_task // "") | txt)"
   ' "$f" 2>/dev/null)" 2>/dev/null || return
   now=$(date +%s)
   case "$status" in
@@ -1146,6 +1147,11 @@ handoff_segment() {
     if [ "$a" -lt 60 ]; then ago=" · just now"
     elif [ "$a" -lt 3600 ]; then ago=" · $(( a / 60 ))m ago"
     else ago=" · $(( a / 3600 ))h ago"; fi
+  fi
+  if [ -n "$last" ] && [ "$finished" -gt 0 ] && [ $(( now - finished )) -lt 300 ]; then
+    local l="${last:0:32}"; [ "${#last}" -gt 32 ] && l="${l}…"
+    printf "%s" "${CLR_GREEN}${ICON_HANDOFF} ${label} ✓${CLR_RESET}${CLR_DIM} ${l}${ago}${CLR_RESET}"
+    return
   fi
   printf "%s" "${CLR_DIM}${ICON_HANDOFF} ${label} ×${calls}${ago}${CLR_RESET}"
 }

@@ -224,6 +224,7 @@ $CLAUDE_DIR/.statusline-state/handoff-<session_id>.json
 | `started_at`, `finished_at` | Unix epoch seconds |
 | `calls` | Tasks completed in this session |
 | `error` | Reason for the last failure |
+| `last_task` | Short description of the last task that finished. For 5 minutes after it finishes, the segment shows `🔀 Enterprise ✓ <last_task> · just now` |
 | `active` | Tasks running at the same time. Above 1, the segment shows `working ×2`, timed from the oldest |
 
 Write the file atomically (write a temp file, then rename) so a render never reads half of it.

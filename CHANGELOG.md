@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.0: 2026-11-12
+
+### Handoffs
+
+- **Finished handoffs say what they answered**: for 5 minutes after a handoff ends, the segment shows `🔀 Enterprise ✓ Read the SKU thread · just now` (from the new `last_task` field) instead of only a count. Useful when the handoff ran in the background and Claude Code's own notice only names a task id.
+
+---
+
 ## v3.1.0: 2026-11-12
 
 ### Handoffs
