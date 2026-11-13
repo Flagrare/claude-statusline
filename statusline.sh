@@ -1088,8 +1088,10 @@ fi
 # another session, e.g. a helper running on a second account. Any tool can
 # drive it by writing $CLAUDE_DIR/.statusline-state/handoff-<session_id>.json:
 #   {"label": "Enterprise", "status": "working"|"idle"|"error", "task": "...",
-#    "started_at": <epoch>, "finished_at": <epoch>, "calls": <n>, "error": "..."}
-# Renders "🔀 Enterprise: working 1m05s · <task>" while it runs, "🔀 Enterprise
+#    "started_at": <epoch>, "finished_at": <epoch>, "calls": <n>, "error": "...",
+#    "active": <tasks running at once>}
+# Renders "🔀 Enterprise: working 1m05s · <task>" while it runs ("working ×2"
+# when several run at once, timed from the oldest), "🔀 Enterprise
 # ×3 · 4m ago" afterwards, and red for 15 min after a failure.
 fmt_dur() {
   local s=$1
@@ -1102,7 +1104,7 @@ handoff_segment() {
   [ -n "$session_id" ] || return
   local f="$CLAUDE_DIR/.statusline-state/handoff-${session_id}.json"
   [ -f "$f" ] || return
-  local label status task started finished calls err now
+  local label status task started finished calls err active now
   # Every field is forced to a string with control characters removed, so a
   # malformed file can neither inject shell words into the eval (an array
   # through @sh becomes several words) nor print terminal escape codes.
@@ -1115,7 +1117,8 @@ handoff_segment() {
     @sh "started=\((.started_at | num) | tostring)",
     @sh "finished=\((.finished_at | num) | tostring)",
     @sh "calls=\((.calls | num) | tostring)",
-    @sh "err=\((.error // "") | txt)"
+    @sh "err=\((.error // "") | txt)",
+    @sh "active=\((.active | num) | tostring)"
   ' "$f" 2>/dev/null)" 2>/dev/null || return
   now=$(date +%s)
   case "$status" in
@@ -1123,7 +1126,8 @@ handoff_segment() {
       local el=$(( now - started ))
       if [ "$started" -gt 0 ] && [ "$el" -lt 1800 ]; then
         local t="${task:0:32}"; [ "${#task}" -gt 32 ] && t="${t}…"
-        printf "%s" "${CLR_YELLOW}${ICON_HANDOFF} ${label}: working $(fmt_dur "$el")${CLR_RESET}${t:+${CLR_DIM} · ${t}${CLR_RESET}}"
+        local n=""; [ "$active" -gt 1 ] && n=" ×${active}"
+        printf "%s" "${CLR_YELLOW}${ICON_HANDOFF} ${label}: working${n} $(fmt_dur "$el")${CLR_RESET}${t:+${CLR_DIM} · ${t}${CLR_RESET}}"
       else
         printf "%s" "${CLR_RED}${ICON_HANDOFF} ${label}: no answer${CLR_RESET}"
       fi

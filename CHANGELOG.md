@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.1.0: 2026-11-12
+
+### Handoffs
+
+- **Parallel handoffs**: a handoff file can now say how many tasks are running at once (`active`). When more than one is running, the segment shows `🔀 Enterprise: working ×2 1m05s`, timed from the oldest task, so background handoffs don't hide behind each other.
+
+---
+
 ## v3.0.0: 2026-11-10
 
 Rows stop breaking mid-segment, timers keep moving while Claude is idle, and subagents get a useful row.

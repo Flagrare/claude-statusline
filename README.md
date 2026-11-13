@@ -23,7 +23,7 @@ Emoji mode:
 | Segment | What you see |
 |---------|-------------|
 | 👤 Account | **Opt-in**: which login this session bills to: plan and email domain (`👤 Max · example.com`). Orange for individual plans, blue for Team/Enterprise or a cloud provider, red with ⚠️ when the domain isn't in `ACCOUNT_WORK_DOMAINS`. Follows a mid-session `/login`. Enable with `/statusline-account`, see [Account badge](#account-badge-opt-in) below. |
-| 🔀 Handoff | Work this session handed to another session, such as a helper on a second account: `🔀 Enterprise: working 1m05s` while it runs, `🔀 Enterprise ×3 · 4m ago` afterwards, red when it fails. Hidden until used. **On by default**; toggle with `/statusline-handoff`. See [Handoffs](#handoffs) below. |
+| 🔀 Handoff | Work this session handed to another session, such as a helper on a second account: `🔀 Enterprise: working 1m05s` while it runs (`working ×2` when several run at once), `🔀 Enterprise ×3 · 4m ago` afterwards, red when it fails. Hidden until used. **On by default**; toggle with `/statusline-handoff`. See [Handoffs](#handoffs) below. |
 | Model name | Which model is active for this session |
 | 🧠 Thinking level | Current effort setting (`low` through `max`), color-coded gray to orange as it increases |
 | ⚡ Fast mode | A `⚡ fast` badge on the top row while Claude Code's Fast mode is active. Auto-hides otherwise. **On by default** — toggle with `/statusline-fast-mode`. |
@@ -224,6 +224,7 @@ $CLAUDE_DIR/.statusline-state/handoff-<session_id>.json
 | `started_at`, `finished_at` | Unix epoch seconds |
 | `calls` | Tasks completed in this session |
 | `error` | Reason for the last failure |
+| `active` | Tasks running at the same time. Above 1, the segment shows `working ×2`, timed from the oldest |
 
 Write the file atomically (write a temp file, then rename) so a render never reads half of it.
 
